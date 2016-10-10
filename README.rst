@@ -6,4 +6,4 @@ Extension for `nameko <http://nameko.readthedocs.org>`_ that allows the built-in
 Usage
 -----
 
-...
+.. literalinclude:: docs/examples/rpc.py
