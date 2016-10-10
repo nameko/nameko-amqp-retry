@@ -1,10 +1,11 @@
 import pytest
-from mock import ANY
+from mock import ANY, patch
+
+from nameko_amqp_retry import Backoff
+from nameko_amqp_retry.rpc import Rpc, rpc
 
 from nameko.exceptions import RemoteError
 from nameko.testing.services import entrypoint_waiter
-from nameko_amqp_retry import Backoff
-from nameko_amqp_retry.rpc import rpc
 
 
 class TestRpc(object):
@@ -150,3 +151,52 @@ class TestRpc(object):
             [None] * backoff_count + ["b"]
         )
         assert counter['b'] == backoff_count + 1
+
+    def test_non_backoff_exception(
+        self, container_factory, rabbit_config, rpc_proxy
+    ):
+        """ Non-backoff exceptions are handled normally
+        """
+        class Boom(Exception):
+            pass
+
+        class Service(object):
+            name = "service"
+
+            @rpc
+            def method(self):
+                raise Boom()
+
+        container = container_factory(Service, rabbit_config)
+        container.start()
+
+        with pytest.raises(RemoteError) as exc_info:
+            rpc_proxy.service.method()
+        assert exc_info.value.exc_type == "Boom"
+
+    @patch.object(Rpc, 'handle_message')
+    def test_error_during_handle_message(
+        self, patched_handle_message, container_factory, rabbit_config,
+        rpc_proxy
+    ):
+        """ Backoff doesn't interfere with error handling in
+        RpcConsumer.handle_message
+        """
+        class Boom(Exception):
+            pass
+
+        class Service(object):
+            name = "service"
+
+            @rpc
+            def method(self):
+                return "OK"
+
+        patched_handle_message.side_effect = Boom
+
+        container = container_factory(Service, rabbit_config)
+        container.start()
+
+        with pytest.raises(RemoteError) as exc_info:
+            rpc_proxy.service.method()
+        assert exc_info.value.exc_type == "Boom"

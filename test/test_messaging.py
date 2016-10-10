@@ -2,9 +2,10 @@ import pytest
 from kombu.messaging import Queue
 from mock import ANY
 
-from nameko.testing.services import entrypoint_waiter
 from nameko_amqp_retry import Backoff
 from nameko_amqp_retry.messaging import consume
+
+from nameko.testing.services import entrypoint_waiter
 
 
 class TestMessaging(object):
@@ -112,3 +113,28 @@ class TestMessaging(object):
         # backoff from service_one not seen by service_two
         assert counter['one'] == backoff_count + 1
         assert counter['two'] == 1
+
+    def test_non_backoff_exception(
+        self, container_factory, rabbit_config, publish_message,
+        queue, exchange
+    ):
+        """ Non-backoff exceptions are handled normally
+        """
+        class Boom(Exception):
+            pass
+
+        class Service(object):
+            name = "service"
+
+            @consume(queue)
+            def handle(self, payload):
+                raise Boom()
+
+        container = container_factory(Service, rabbit_config)
+        container.start()
+
+        with entrypoint_waiter(container, 'handle') as result:
+            publish_message(exchange, "msg", routing_key=queue.routing_key)
+
+        with pytest.raises(Boom):
+            result.get()
