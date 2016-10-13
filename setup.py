@@ -21,7 +21,7 @@ setup(
             "pytest==2.8.3",
         ],
         'examples': [
-            "arrow=0.8.0"
+            "arrow==0.8.0"
         ]
     },
     dependency_links=[],
