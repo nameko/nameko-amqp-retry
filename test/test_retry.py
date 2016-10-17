@@ -7,10 +7,81 @@ from kombu.pools import connections
 from kombu.serialization import register, unregister
 from mock import ANY, patch
 
+from nameko_amqp_retry import Backoff, BackoffPublisher
+from nameko_amqp_retry.rpc import rpc
+
 from nameko.constants import AMQP_URI_CONFIG_KEY
 from nameko.extensions import DependencyProvider
 from nameko.testing.services import entrypoint_waiter
-from nameko_amqp_retry import Backoff
+
+
+class QuickBackoff(Backoff):
+    schedule = (10,)
+
+
+class SlowBackoff(Backoff):
+    schedule = (100,)
+
+
+class TestMultipleMessages(object):
+
+    @pytest.fixture
+    def container(self, container_factory, rabbit_config, counter):
+
+        class Service(object):
+            name = "service"
+
+            backoff = BackoffPublisher()
+
+            @rpc
+            def slow(self):
+                if counter["slow"].increment() <= 1:
+                    raise SlowBackoff()
+                return "slow"
+
+            @rpc
+            def quick(self):
+                if counter["quick"].increment() <= 1:
+                    raise QuickBackoff()
+                return "quick"
+
+        container = container_factory(Service, rabbit_config)
+        container.start()
+
+        return container
+
+    @pytest.mark.xfail(reason="retry queue only deadletters at the head")
+    def test_messages_can_leapfrog(
+        self, container, entrypoint_tracker, rpc_proxy, wait_for_result
+    ):
+        """ Messages with short TTLs should be able to leapfrog messages with
+        long TTLs that are also in the "wait" queue
+        """
+
+        # wait for both entrypoints to generate a result
+        with entrypoint_waiter(
+            container, 'quick', callback=wait_for_result
+        ) as result_quick:
+            with entrypoint_waiter(
+                container, 'slow', callback=wait_for_result
+            ) as result_slow:
+
+                # wait for "slow" to back off once before calling "quick"
+                with entrypoint_waiter(container, 'slow'):
+                    rpc_proxy.service.slow.call_async()
+                rpc_proxy.service.quick.call_async()
+
+        assert result_quick.get() == "quick"
+        assert result_slow.get() == "slow"
+
+        # "quick" should return a result before "slow" because it has a
+        # shorter backoff interval, even though "slow" raises first
+        assert entrypoint_tracker.get_results() == (
+            [None, None] + ["quick", "slow"]
+        )
+        assert entrypoint_tracker.get_exceptions() == (
+            [(SlowBackoff, ANY, ANY), (QuickBackoff, ANY, ANY)] + [None, None]
+        )
 
 
 class TestCallStack(object):
