@@ -64,8 +64,11 @@ class BackoffPublisher(SharedExtension):
     @property
     def exchange(self):
         backoff_exchange = Exchange(
-            type="topic",
-            name="backoff"
+            type="x-delayed-message",
+            name="backoff",
+            arguments={
+                'x-delayed-type': 'topic'
+            }
         )
         return backoff_exchange
 
@@ -76,6 +79,7 @@ class BackoffPublisher(SharedExtension):
             exchange=self.exchange,
             routing_key="#",
             queue_arguments={
+                'x-max-length': 0,   # immediately deadletter
                 'x-dead-letter-exchange': "",   # default exchange
             }
         )
@@ -87,7 +91,7 @@ class BackoffPublisher(SharedExtension):
             message, self.exchange.name
         )
 
-        # republish to backoff queue
+        # republish to backoff exchange
         conn = Connection(self.container.config[AMQP_URI_CONFIG_KEY])
         with connections[conn].acquire(block=True) as connection:
 
@@ -98,12 +102,12 @@ class BackoffPublisher(SharedExtension):
 
                 properties = message.properties.copy()
                 headers = properties.pop('application_headers')
+                headers['x-delay'] = expiration
 
                 producer.publish(
                     message.body,
                     headers=headers,
                     exchange=self.exchange,
                     routing_key=target_queue,
-                    expiration=expiration / 1000,
                     **properties
                 )

@@ -50,7 +50,6 @@ class TestMultipleMessages(object):
 
         return container
 
-    @pytest.mark.xfail(reason="retry queue only deadletters at the head")
     def test_messages_can_leapfrog(
         self, container, entrypoint_tracker, rpc_proxy, wait_for_result
     ):
