@@ -6,7 +6,9 @@ machine:
   environment:
     IMAGE_TAG: ${CIRCLE_SHA1}
   pre:
+    - curl http://www.rabbitmq.com/community-plugins/v3.6.x/rabbitmq_delayed_message_exchange-0.0.1.ez > $RABBITMQ_PLUGINS_DIR/rabbitmq_delayed_message_exchange-0.0.1.ez
     - sudo rabbitmq-plugins enable rabbitmq_management
+    - sudo rabbitmq-plugins enable rabbitmq_delayed_message_exchange
 
 dependencies:
   pre:
