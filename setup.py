@@ -5,9 +5,9 @@ setup(
     name='nameko-amqp-retry',
     version='0.0.1',
     description='Nameko extension allowing AMQP entrypoints to retry later',
-    author='Matt Bennett',
-    author_email='matt@bennett.name',
-    url='http://github.com/mattbennett/nameko-amqp-retry',
+    author='Student.com',
+    author_email='wearehiring@student.com',
+    url='http://github.com/Overseas-Student-Living/nameko-amqp-retry',
     packages=find_packages(exclude=['test', 'test.*']),
     install_requires=[
         "nameko>=2.4.2",
