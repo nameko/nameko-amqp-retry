@@ -1,7 +1,7 @@
 import pytest
 from mock import ANY
-
 from nameko.testing.services import entrypoint_waiter
+
 from nameko_amqp_retry import Backoff
 from nameko_amqp_retry.events import event_handler
 

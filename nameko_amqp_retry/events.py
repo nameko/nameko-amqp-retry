@@ -1,4 +1,5 @@
 from nameko.events import EventHandler as NamekoEventHandler
+
 from nameko_amqp_retry.messaging import Consumer
 
 

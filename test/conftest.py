@@ -5,10 +5,10 @@ from kombu import Connection
 from kombu.messaging import Exchange, Queue
 from kombu.pools import connections, producers
 from mock import patch
-
 from nameko.constants import AMQP_URI_CONFIG_KEY
 from nameko.standalone.events import event_dispatcher
 from nameko.standalone.rpc import ClusterRpcProxy
+
 from nameko_amqp_retry import Backoff
 from nameko_amqp_retry.events import event_handler
 from nameko_amqp_retry.messaging import consume

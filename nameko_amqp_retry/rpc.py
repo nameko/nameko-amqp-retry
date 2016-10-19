@@ -3,10 +3,10 @@ import sys
 from nameko.messaging import HeaderEncoder, QueueConsumer
 from nameko.rpc import Rpc as NamekoRpc
 from nameko.rpc import RpcConsumer as NamekoRpcConsumer
-from nameko_amqp_retry import Backoff, BackoffPublisher
 
-RPC_METHOD_ID_HEADER_KEY = 'nameko.rpc_method_id'
-CALL_ID_STACK_HEADER_KEY = 'nameko.call_id_stack'
+from nameko_amqp_retry import Backoff, BackoffPublisher
+from nameko_amqp_retry.constants import (
+    CALL_ID_STACK_HEADER_KEY, RPC_METHOD_ID_HEADER_KEY)
 
 
 class RpcConsumer(NamekoRpcConsumer):
@@ -14,7 +14,7 @@ class RpcConsumer(NamekoRpcConsumer):
     def handle_message(self, body, message):
 
         # use the rpc_method_id if set, otherwise fall back to the routing key
-        method_id = message.headers.get('nameko.rpc_method_id')
+        method_id = message.headers.get(RPC_METHOD_ID_HEADER_KEY)
         if method_id is None:
             method_id = message.delivery_info['routing_key']
 

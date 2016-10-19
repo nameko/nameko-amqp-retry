@@ -5,7 +5,6 @@ from kombu import Connection
 from kombu.common import maybe_declare
 from kombu.messaging import Exchange, Queue
 from kombu.pools import connections, producers
-
 from nameko.constants import AMQP_URI_CONFIG_KEY
 from nameko.extensions import SharedExtension
 

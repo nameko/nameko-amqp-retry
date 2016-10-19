@@ -6,13 +6,12 @@ from kombu.messaging import Exchange, Queue
 from kombu.pools import connections
 from kombu.serialization import register, unregister
 from mock import ANY, patch
-
-from nameko_amqp_retry import Backoff, BackoffPublisher
-from nameko_amqp_retry.rpc import rpc
-
 from nameko.constants import AMQP_URI_CONFIG_KEY
 from nameko.extensions import DependencyProvider
 from nameko.testing.services import entrypoint_waiter
+
+from nameko_amqp_retry import Backoff, BackoffPublisher
+from nameko_amqp_retry.rpc import rpc
 
 
 class QuickBackoff(Backoff):

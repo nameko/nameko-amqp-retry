@@ -1,11 +1,10 @@
 import pytest
 from kombu.messaging import Queue
 from mock import ANY
+from nameko.testing.services import entrypoint_waiter
 
 from nameko_amqp_retry import Backoff
 from nameko_amqp_retry.messaging import consume
-
-from nameko.testing.services import entrypoint_waiter
 
 
 class TestMessaging(object):

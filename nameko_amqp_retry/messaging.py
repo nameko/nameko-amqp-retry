@@ -1,7 +1,9 @@
 import sys
 
 from nameko.messaging import Consumer as NamekoConsumer
+
 from nameko_amqp_retry import Backoff, BackoffPublisher
+from nameko_amqp_retry.constants import CALL_ID_STACK_HEADER_KEY
 
 
 class Consumer(NamekoConsumer):
@@ -15,10 +17,10 @@ class Consumer(NamekoConsumer):
             if issubclass(exc_type, Backoff):
 
                 # add call stack and modify the current entry to show backoff
-                message.headers['nameko.call_id_stack'] = (
+                message.headers[CALL_ID_STACK_HEADER_KEY] = (
                     worker_ctx.call_id_stack
                 )
-                message.headers['nameko.call_id_stack'][-1] += ".backoff"
+                message.headers[CALL_ID_STACK_HEADER_KEY][-1] += ".backoff"
 
                 redeliver_to = self.queue.name
                 try:

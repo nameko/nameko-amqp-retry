@@ -1,11 +1,10 @@
 import pytest
 from mock import ANY, patch
+from nameko.exceptions import RemoteError
+from nameko.testing.services import entrypoint_waiter
 
 from nameko_amqp_retry import Backoff
 from nameko_amqp_retry.rpc import Rpc, rpc
-
-from nameko.exceptions import RemoteError
-from nameko.testing.services import entrypoint_waiter
 
 
 class TestRpc(object):
