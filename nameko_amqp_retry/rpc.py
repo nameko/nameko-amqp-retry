@@ -63,9 +63,9 @@ class Rpc(NamekoRpc, HeaderEncoder):
                     exc_info = sys.exc_info()
                     result = None
 
-        result, exc_info = self.rpc_consumer.handle_result(
-            message, result, exc_info)
-        return result, exc_info
+        return super(Rpc, self).handle_result(
+            message, worker_ctx, result=result, exc_info=exc_info
+        )
 
 
 rpc = Rpc.decorator

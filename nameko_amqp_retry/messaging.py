@@ -31,8 +31,9 @@ class Consumer(NamekoConsumer):
                     exc_info = sys.exc_info()
                     result = None
 
-        self.handle_message_processed(message, result, exc_info)
-        return result, exc_info
+        return super(Consumer, self).handle_result(
+            message, worker_ctx, result=result, exc_info=exc_info
+        )
 
 
 consume = Consumer.decorator
