@@ -8,40 +8,45 @@ It depends on the *experimental* `delayed message exchange <https://github.com/r
 Installation
 ------------
 
-The delayed message exchange plugin should be installed following `their instructions <https://github.com/rabbitmq/rabbitmq-delayed-message-exchange#installing their instructions>`_.
+The delayed message exchange plugin should be installed following `their instructions <https://github.com/rabbitmq/rabbitmq-delayed-message-exchange#installing>`_.
 
 No further configuration is required. The "backoff" exchange and queue used by this library will be created on demand.
 
 Usage
 -----
 
-Raise `nameko_amqp_retry.Backoff` inside the entrypoint you wish to retry later:
+Raise :class:`nameko_amqp_retry.Backoff` inside the entrypoint you wish to retry later:
 
 .. code-block:: python
 
-    @rpc
-    def calculate(self):
-        """ Calculate something, or schedule a retry if not ready yet.
-        """
-        if not_ready_yet:
-            raise Backoff()
+    from nameko_amqp_retry import Backoff
 
-        return 42
+    class Service:
+        name = "service"
 
-The caller will see the final result, or a `Backoff.Expired` exception if more than the allowed number of retries were made:
+        @rpc
+        def calculate(self):
+            """ Calculate something, or schedule a retry if not ready yet.
+            """
+            if not_ready_yet:
+                raise Backoff()
+
+            return 42
+
+The caller will see the final result, or a :class:`Backoff.Expired` exception if more than the allowed number of retries were made:
 
 .. code-block:: python
 
-    >>> n.rpc.calculate()
+    >>> n.rpc.service.calculate()
     ... # blocks for some time
     >>> 42
 
 .. code-block:: python
 
-    >>> n.rpc.calculate()
-    ... # blocks for some time
-    >>> Traceback: Backoff.Expired
-        ...
+    >>> n.rpc.service.calculate()
+    Traceback (most recent call last):
+      ...
+    nameko.exceptions.RemoteError: Expired Backoff aborted after ...
 
 The retry schedule is controlled by attributes on the `Backoff` class. You should override them in a subclass to control the behaviour. For example:
 
