@@ -18,6 +18,15 @@ class TestGetNextExpiration(object):
         return CustomBackoff()
 
     @pytest.fixture
+    def backoff_without_limit(self):
+        class CustomBackoff(Backoff):
+            schedule = [1000, 2000, 3000]
+            randomness = 0
+            limit = 0  # no limit
+
+        return CustomBackoff()
+
+    @pytest.fixture
     def backoff_with_randomness(self):
         class CustomBackoff(Backoff):
             schedule = [1000, 2000, 3000]
@@ -115,6 +124,19 @@ class TestGetNextExpiration(object):
             }]
         }
         assert backoff.get_next_expiration(message, "backoff") == 2000
+
+    def test_no_limit(self, backoff_without_limit):
+
+        backoff = backoff_without_limit
+
+        message = Mock()
+        message.headers = {
+            'x-death': [{
+                'exchange': 'backoff',
+                'count': 999
+            }]
+        }
+        assert backoff.get_next_expiration(message, "backoff") == 3000
 
     @patch('nameko_amqp_retry.backoff.random')
     def test_backoff_randomness(self, random_patch, backoff_with_randomness):

@@ -40,7 +40,7 @@ class Backoff(Exception):
                 total_attempts = int(deadlettered['count'])
                 break
 
-        if total_attempts >= self.limit:
+        if self.limit and total_attempts >= self.limit:
             expired = Backoff.Expired(
                 "Backoff aborted after '{}' retries (~{:.0f} seconds)".format(
                     self.limit, self.max_delay / 1000

@@ -55,7 +55,7 @@ No limit:
     class InfiniteBackoff(Backoff):
         """ Retries forever
         """
-        limit = None
+        limit = 0
 
 
 Custom schedule:
