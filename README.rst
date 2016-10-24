@@ -15,7 +15,9 @@ No further configuration is required. The "backoff" exchange and queue used by t
 Usage
 -----
 
-Raise `nameko_amqp_retry.Backoff` inside the entrypoint you wish to retry later::
+Raise `nameko_amqp_retry.Backoff` inside the entrypoint you wish to retry later:
+
+.. code-block:: python
 
     @rpc
     def calculate(self):
@@ -28,12 +30,14 @@ Raise `nameko_amqp_retry.Backoff` inside the entrypoint you wish to retry later:
 
 The caller will see the final result, or a `Backoff.Expired` exception if more than the allowed number of retries were made:
 
-::
+.. code-block:: python
+
     >>> n.rpc.calculate()
     ... # blocks for some time
     >>> 42
 
-::
+.. code-block:: python
+
     >>> n.rpc.calculate()
     ... # blocks for some time
     >>> Traceback: Backoff.Expired
@@ -43,7 +47,8 @@ The retry schedule is controlled by attributes on the `Backoff` class. You shoul
 
 Fixed schedule:
 
-::
+.. code-block:: python
+
     class RegularBackoff(Backoff):
         """ Retries every 1000ms until limit
         """
@@ -51,7 +56,8 @@ Fixed schedule:
 
 No limit:
 
-::
+.. code-block:: python
+
     class InfiniteBackoff(Backoff):
         """ Retries forever
         """
@@ -60,7 +66,8 @@ No limit:
 
 Custom schedule:
 
-::
+.. code-block:: python
+
     class ImpatientBackoff(Backoff):
         """ Retries after 100, then 200, then 500 milliseconds
         """
@@ -69,12 +76,14 @@ Custom schedule:
 
 Dynamic schedule:
 
-::
+.. code-block:: python
+
     class DynamicBackoff(Backoff):
         """ Calculates schedule dynamically
         """
         @classmethod
         def get_next_schedule_item(cls, index):
             ...
+
 
 See docs/examples for more.
