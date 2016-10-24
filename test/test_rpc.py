@@ -1,10 +1,15 @@
+import traceback
+
 import pytest
+import six
 from mock import ANY, patch
 from nameko.exceptions import RemoteError
 from nameko.testing.services import entrypoint_waiter
 
 from nameko_amqp_retry import Backoff
 from nameko_amqp_retry.rpc import Rpc, rpc
+
+from test import PY3
 
 
 class TestRpc(object):
@@ -60,6 +65,109 @@ class TestRpc(object):
             [(Backoff, ANY, ANY)] * limited_backoff +
             [(Backoff.Expired, ANY, ANY)]
         )
+
+    def test_chain_backoff_exception(
+        self, container_factory, rabbit_config, rpc_proxy, backoff_count,
+        counter, entrypoint_tracker, wait_for_result
+    ):
+        """ Backoff can be chained to a root-cause exception
+        """
+        class NotYet(Exception):
+            pass
+
+        class Service(object):
+            name = "service"
+
+            @rpc
+            def method(self, arg):
+                try:
+                    if counter.increment() <= backoff_count:
+                        raise NotYet("try again later")
+                except NotYet as exc:
+                    six.raise_from(Backoff(), exc)
+                return "result"
+
+        container = container_factory(Service, rabbit_config)
+        container.start()
+
+        with entrypoint_waiter(
+            container, 'method', callback=wait_for_result
+        ) as result:
+            res = rpc_proxy.service.method("arg")
+
+        assert res == result.get() == "result"
+
+        # entrypoint fired backoff_count + 1 times
+        assert entrypoint_tracker.get_results() == (
+            [None] * backoff_count + ["result"]
+        )
+        # entrypoint raised `Backoff` for all but the last execution
+        assert entrypoint_tracker.get_exceptions() == (
+            [(Backoff, ANY, ANY)] * backoff_count + [None]
+        )
+
+        # on py3, backoff contains chained exception
+        if PY3:
+            exc_type, exc, tb = entrypoint_tracker.get_exceptions()[0]
+            stack = "".join(traceback.format_exception(exc_type, exc, tb))
+            assert "NotYet: try again later" in stack
+            assert "nameko_amqp_retry.backoff.Backoff" in stack
+
+    def test_chain_backoff_expired(
+        self, container_factory, rabbit_config, rpc_proxy, limited_backoff,
+        counter, entrypoint_tracker, wait_for_backoff_expired
+    ):
+        """ Backoff.Expired can be chained to a Backoff exception and
+        root-cause exception
+        """
+        class NotYet(Exception):
+            pass
+
+        class Service(object):
+            name = "service"
+
+            @rpc
+            def method(self, arg):
+                try:
+                    raise NotYet("try again later")
+                except NotYet as exc:
+                    six.raise_from(Backoff(), exc)
+                return "result"
+
+        container = container_factory(Service, rabbit_config)
+        container.start()
+
+        with entrypoint_waiter(
+            container, 'method', callback=wait_for_backoff_expired
+        ) as result:
+            with pytest.raises(RemoteError) as raised:
+                rpc_proxy.service.method("arg")
+            assert raised.value.exc_type == "Expired"
+
+        with pytest.raises(Backoff.Expired) as raised:
+            result.get()
+        assert (
+            "Backoff aborted after '{}' retries".format(limited_backoff)
+        ) in str(raised.value)
+
+        # entrypoint fired `limited_backoff` + 1 times
+        assert entrypoint_tracker.get_results() == (
+            [None] * limited_backoff + [None]
+        )
+        # entrypoint raised `Backoff` for all but the last execution,
+        # and then raised `Backoff.Expired`
+        assert entrypoint_tracker.get_exceptions() == (
+            [(Backoff, ANY, ANY)] * limited_backoff +
+            [(Backoff.Expired, ANY, ANY)]
+        )
+
+        # on py3, backoff expired contains chained exceptions
+        if PY3:
+            exc_type, exc, tb = entrypoint_tracker.get_exceptions()[-1]
+            stack = "".join(traceback.format_exception(exc_type, exc, tb))
+            assert "NotYet: try again later" in stack
+            assert "nameko_amqp_retry.backoff.Backoff" in stack
+            assert "nameko_amqp_retry.backoff.Expired" in stack
 
     def test_multiple_services(
         self, rpc_proxy, wait_for_result, counter, backoff_count,

@@ -35,8 +35,8 @@ class Rpc(NamekoRpc, HeaderEncoder):
     def handle_result(self, message, worker_ctx, result, exc_info):
 
         if exc_info is not None:
-            exc_type = exc_info[0]
-            if issubclass(exc_type, Backoff):
+            exc = exc_info[1]
+            if isinstance(exc, Backoff):
 
                 # add call stack and modify the current entry to show backoff
                 message.headers[CALL_ID_STACK_HEADER_KEY] = (
@@ -54,7 +54,7 @@ class Rpc(NamekoRpc, HeaderEncoder):
                 target_queue = "rpc-{}".format(self.container.service_name)
                 try:
                     self.backoff_publisher.republish(
-                        exc_type, message, target_queue
+                        exc, message, target_queue
                     )
                     self.queue_consumer.ack_message(message)
                     return result, exc_info

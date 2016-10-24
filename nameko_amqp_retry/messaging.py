@@ -13,8 +13,8 @@ class Consumer(NamekoConsumer):
     def handle_result(self, message, worker_ctx, result=None, exc_info=None):
 
         if exc_info is not None:
-            exc_type = exc_info[0]
-            if issubclass(exc_type, Backoff):
+            exc = exc_info[1]
+            if isinstance(exc, Backoff):
 
                 # add call stack and modify the current entry to show backoff
                 message.headers[CALL_ID_STACK_HEADER_KEY] = (
@@ -25,7 +25,7 @@ class Consumer(NamekoConsumer):
                 redeliver_to = self.queue.name
                 try:
                     self.backoff_publisher.republish(
-                        exc_type, message, redeliver_to
+                        exc, message, redeliver_to
                     )
                 except Backoff.Expired:
                     exc_info = sys.exc_info()

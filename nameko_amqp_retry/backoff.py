@@ -9,15 +9,6 @@ from nameko.constants import AMQP_URI_CONFIG_KEY
 from nameko.extensions import SharedExtension
 
 
-class BackoffMeta(type):
-    @property
-    def max_delay(cls):
-        return sum(
-            cls.get_next_schedule_item(index) for index in range(cls.limit)
-        )
-
-
-@six.add_metaclass(BackoffMeta)
 class Backoff(Exception):
 
     schedule = (1000, 2000, 3000, 5000, 8000, 13000, 21000, 34000, 55000)
@@ -27,6 +18,12 @@ class Backoff(Exception):
     class Expired(Exception):
         pass
 
+    @property
+    def max_delay(self):
+        return sum(
+            self.get_next_schedule_item(index) for index in range(self.limit)
+        )
+
     @classmethod
     def get_next_schedule_item(cls, index):
         if index >= len(cls.schedule):
@@ -35,8 +32,7 @@ class Backoff(Exception):
             item = cls.schedule[index]
         return item
 
-    @classmethod
-    def get_next_expiration(cls, message, backoff_exchange_name):
+    def get_next_expiration(self, message, backoff_exchange_name):
 
         total_attempts = 0
         for deadlettered in message.headers.get('x-death', ()):
@@ -44,17 +40,18 @@ class Backoff(Exception):
                 total_attempts = int(deadlettered['count'])
                 break
 
-        if total_attempts >= cls.limit:
-            raise cls.Expired(
+        if total_attempts >= self.limit:
+            expired = Backoff.Expired(
                 "Backoff aborted after '{}' retries (~{:.0f} seconds)".format(
-                    cls.limit, cls.max_delay / 1000  # pylint: disable=E1101
+                    self.limit, self.max_delay / 1000
                 )
             )
+            six.raise_from(expired, self)
 
-        expiration = cls.get_next_schedule_item(total_attempts)
+        expiration = self.get_next_schedule_item(total_attempts)
 
-        if cls.randomness:
-            expiration = int(random.gauss(expiration, cls.randomness))
+        if self.randomness:
+            expiration = int(random.gauss(expiration, self.randomness))
         return expiration
 
 
@@ -84,9 +81,9 @@ class BackoffPublisher(SharedExtension):
         )
         return backoff_queue
 
-    def republish(self, backoff_cls, message, target_queue):
+    def republish(self, backoff_exc, message, target_queue):
 
-        expiration = backoff_cls.get_next_expiration(
+        expiration = backoff_exc.get_next_expiration(
             message, self.exchange.name
         )
 
