@@ -15,11 +15,11 @@ from nameko_amqp_retry.rpc import rpc
 
 
 class QuickBackoff(Backoff):
-    schedule = (10,)
+    schedule = (100,)
 
 
 class SlowBackoff(Backoff):
-    schedule = (100,)
+    schedule = (500,)
 
 
 class TestMultipleMessages(object):
@@ -64,7 +64,8 @@ class TestMultipleMessages(object):
                 container, 'slow', callback=wait_for_result
             ) as result_slow:
 
-                # wait for "slow" to back off once before calling "quick"
+                # wait for "slow" to fire once before calling "quick",
+                # to make absolutely sure its backoff is dispatched first
                 with entrypoint_waiter(container, 'slow'):
                     rpc_proxy.service.slow.call_async()
                 rpc_proxy.service.quick.call_async()

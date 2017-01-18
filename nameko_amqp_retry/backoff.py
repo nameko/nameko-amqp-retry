@@ -60,23 +60,21 @@ class BackoffPublisher(SharedExtension):
     @property
     def exchange(self):
         backoff_exchange = Exchange(
-            type="x-delayed-message",
-            name="backoff",
-            arguments={
-                'x-delayed-type': 'topic'
-            }
+            type="headers",
+            name="backoff"
         )
         return backoff_exchange
 
-    @property
-    def queue(self):
+    def make_queue(self, expiration_seconds):
         backoff_queue = Queue(
-            name="backoff",
+            name="backoff--{}".format(expiration_seconds),
             exchange=self.exchange,
-            routing_key="#",
+            binding_arguments={
+                'backoff': expiration_seconds,
+                'x-match': 'any'
+            },
             queue_arguments={
-                'x-max-length': 0,   # immediately deadletter
-                'x-dead-letter-exchange': "",   # default exchange
+                'x-dead-letter-exchange': ""   # default exchange
             }
         )
         return backoff_queue
@@ -86,24 +84,29 @@ class BackoffPublisher(SharedExtension):
         expiration = backoff_exc.get_next_expiration(
             message, self.exchange.name
         )
+        expiration_seconds = expiration / 1000
 
-        # republish to backoff exchange
+        queue = self.make_queue(expiration_seconds)
+
+        # republish to appropriate backoff queue
         conn = Connection(self.container.config[AMQP_URI_CONFIG_KEY])
         with connections[conn].acquire(block=True) as connection:
 
             maybe_declare(self.exchange, connection)
-            maybe_declare(self.queue, connection)
+            maybe_declare(queue, connection)
 
             with producers[conn].acquire(block=True) as producer:
 
                 properties = message.properties.copy()
                 headers = properties.pop('application_headers')
-                headers['x-delay'] = expiration
+
+                headers['backoff'] = expiration_seconds
 
                 producer.publish(
                     message.body,
                     headers=headers,
                     exchange=self.exchange,
                     routing_key=target_queue,
+                    expiration=expiration_seconds,
                     **properties
                 )

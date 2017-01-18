@@ -164,7 +164,8 @@ class TestMessaging(object):
 
     def test_multiple_queues_with_same_exchange_and_routing_key(
         self, container_factory, entrypoint_tracker, rabbit_manager, exchange,
-        wait_for_result, publish_message, counter, rabbit_config, backoff_count
+        wait_for_result, publish_message, counter, rabbit_config,
+        backoff_count, fast_backoff
     ):
         """ Message consumption backoff works when there are muliple queues
         receiving the published message
@@ -206,7 +207,9 @@ class TestMessaging(object):
 
         # ensure all messages are processed
         vhost = rabbit_config['vhost']
-        backoff_queue = rabbit_manager.get_queue(vhost, 'backoff')
+        backoff_queue = rabbit_manager.get_queue(
+            vhost, 'backoff--{}'.format(fast_backoff / 1000)
+        )
         service_queue_one = rabbit_manager.get_queue(vhost, queue_one.name)
         service_queue_two = rabbit_manager.get_queue(vhost, queue_two.name)
         assert backoff_queue['messages'] == 0
