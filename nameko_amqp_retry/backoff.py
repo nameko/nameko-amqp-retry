@@ -9,6 +9,10 @@ from nameko.constants import AMQP_URI_CONFIG_KEY
 from nameko.extensions import SharedExtension
 
 
+def get_backoff_queue_name(expiration):
+    return "backoff--{}".format(expiration)
+
+
 class Backoff(Exception):
 
     schedule = (1000, 2000, 3000, 5000, 8000, 13000, 21000, 34000, 55000)
@@ -65,12 +69,12 @@ class BackoffPublisher(SharedExtension):
         )
         return backoff_exchange
 
-    def make_queue(self, expiration_seconds):
+    def make_queue(self, expiration):
         backoff_queue = Queue(
-            name="backoff--{}".format(expiration_seconds),
+            name=get_backoff_queue_name(expiration),
             exchange=self.exchange,
             binding_arguments={
-                'backoff': expiration_seconds,
+                'backoff': expiration,
                 'x-match': 'any'
             },
             queue_arguments={
@@ -84,9 +88,7 @@ class BackoffPublisher(SharedExtension):
         expiration = backoff_exc.get_next_expiration(
             message, self.exchange.name
         )
-        expiration_seconds = expiration / 1000
-
-        queue = self.make_queue(expiration_seconds)
+        queue = self.make_queue(expiration)
 
         # republish to appropriate backoff queue
         conn = Connection(self.container.config[AMQP_URI_CONFIG_KEY])
@@ -100,7 +102,8 @@ class BackoffPublisher(SharedExtension):
                 properties = message.properties.copy()
                 headers = properties.pop('application_headers')
 
-                headers['backoff'] = expiration_seconds
+                headers['backoff'] = expiration
+                expiration_seconds = expiration / 1000
 
                 producer.publish(
                     message.body,

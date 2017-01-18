@@ -13,6 +13,7 @@ from nameko.extensions import DependencyProvider
 from nameko.testing.services import entrypoint_waiter
 
 from nameko_amqp_retry import Backoff, BackoffPublisher
+from nameko_amqp_retry.backoff import get_backoff_queue_name
 from nameko_amqp_retry.messaging import consume
 from nameko_amqp_retry.rpc import rpc
 
@@ -86,7 +87,7 @@ class TestPublisher(object):
         @retry
         def check_queue(delay):
             backoff_queue = rabbit_manager.get_queue(
-                vhost, 'backoff--{}'.format(delay / 1000)
+                vhost, get_backoff_queue_name(delay)
             )
             assert backoff_queue['messages'] == delays.count(delay)
 

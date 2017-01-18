@@ -7,6 +7,7 @@ from mock import ANY
 from nameko.testing.services import entrypoint_waiter
 
 from nameko_amqp_retry import Backoff
+from nameko_amqp_retry.backoff import get_backoff_queue_name
 from nameko_amqp_retry.messaging import consume
 
 from test import PY3
@@ -208,7 +209,7 @@ class TestMessaging(object):
         # ensure all messages are processed
         vhost = rabbit_config['vhost']
         backoff_queue = rabbit_manager.get_queue(
-            vhost, 'backoff--{}'.format(fast_backoff / 1000)
+            vhost, get_backoff_queue_name(fast_backoff)
         )
         service_queue_one = rabbit_manager.get_queue(vhost, queue_one.name)
         service_queue_two = rabbit_manager.get_queue(vhost, queue_two.name)
