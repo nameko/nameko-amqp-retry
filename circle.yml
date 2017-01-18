@@ -6,7 +6,7 @@ machine:
   pre:
     - sudo rabbitmq-plugins enable rabbitmq_management
 dependencies:
-  pre:
+  override:
     - pip install -U pip setuptools tox
     - pip install -e ".[dev]"
     - pyenv local 2.7.10 3.3.6 3.4.3
