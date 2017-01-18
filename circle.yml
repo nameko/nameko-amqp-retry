@@ -3,7 +3,8 @@ machine:
     version: 3.4.3
   services:
     - rabbitmq-server
-
+  pre:
+    - sudo rabbitmq-plugins enable rabbitmq_management
 dependencies:
   pre:
     - pip install -U pip setuptools tox
