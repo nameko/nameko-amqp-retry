@@ -103,7 +103,7 @@ class BackoffPublisher(SharedExtension):
                 headers = properties.pop('application_headers')
 
                 headers['backoff'] = expiration
-                expiration_seconds = expiration / 1000
+                expiration_seconds = float(expiration) / 1000
 
                 producer.publish(
                     message.body,
