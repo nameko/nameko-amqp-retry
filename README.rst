@@ -3,23 +3,26 @@ nameko-amqp-retry
 
 Extension for `nameko <http://nameko.readthedocs.org>`_ that allows the built-in AMQP entrypoints to schedule a later retry via redelivery of a message.
 
-It depends on the *experimental* `delayed message exchange <https://github.com/rabbitmq/rabbitmq-delayed-message-exchange>`_ plugin for RabbitMQ.
+RabbitMQ 3.5.4 or later is required.
+
 
 Installation
 ------------
 
-The delayed message exchange plugin should be installed following `their instructions <https://github.com/rabbitmq/rabbitmq-delayed-message-exchange#installing>`_.
+Install the library from PyPI::
 
-No further configuration is required. The "backoff" exchange and queue used by this library will be created on demand.
+    pip install nameko-amqp-retry
+
 
 Usage
 -----
 
-Raise :class:`nameko_amqp_retry.Backoff` inside the entrypoint you wish to retry later:
+This library subclasses nameko's built-in entrypoints. Use these subclasses in your service definition, and then raise :class:`nameko_amqp_retry.Backoff` inside an entrypoint you wish to retry later:
 
 .. code-block:: python
 
     from nameko_amqp_retry import Backoff
+    from nameko_amqp_retry.rpc import rpc
 
     class Service:
         name = "service"
