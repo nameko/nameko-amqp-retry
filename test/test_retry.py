@@ -1,4 +1,6 @@
 import json
+import time
+import itertools
 
 import pytest
 from kombu import Connection
@@ -11,15 +13,87 @@ from nameko.extensions import DependencyProvider
 from nameko.testing.services import entrypoint_waiter
 
 from nameko_amqp_retry import Backoff, BackoffPublisher
+from nameko_amqp_retry.backoff import get_backoff_queue_name
+from nameko_amqp_retry.messaging import consume
 from nameko_amqp_retry.rpc import rpc
 
 
+def retry(fn):
+    """ Barebones retry decorator
+    """
+    def wrapper(*args, **kwargs):
+        exceptions = AssertionError
+        max_retries = 3
+        delay = 1
+
+        counter = itertools.count()
+        while True:
+            try:
+                return fn(*args, **kwargs)
+            except exceptions:
+                if next(counter) == max_retries:
+                    raise
+                time.sleep(delay)
+    return wrapper
+
+
 class QuickBackoff(Backoff):
-    schedule = (10,)
+    schedule = (100,)
 
 
 class SlowBackoff(Backoff):
-    schedule = (100,)
+    schedule = (500,)
+
+
+class TestPublisher(object):
+
+    @pytest.fixture
+    def container(self, container_factory, rabbit_config, queue):
+
+        class Service(object):
+            name = "service"
+
+            @consume(queue)
+            def backoff(self, delay):
+                class DynamicBackoff(Backoff):
+                    schedule = (delay,)
+                raise DynamicBackoff()
+
+        container = container_factory(Service, rabbit_config)
+        container.start()
+        return container
+
+    def test_routing(
+        self, container, publish_message, exchange, queue, counter,
+        rabbit_config, rabbit_manager
+    ):
+        """ Queues should be dynamically created for each unique delay.
+        Messages should be routed to the appropriate queue based on their
+        delay value.
+        """
+        delays = [10000, 20000, 20000, 30000, 30000, 30000]
+
+        def all_received(worker_ctx, res, exc_info):
+            if counter.increment() == len(delays):
+                return True
+
+        # cause multiple unique backoffs to be raised
+        with entrypoint_waiter(container, 'backoff', callback=all_received):
+            for delay in delays:
+                publish_message(exchange, delay, routing_key=queue.routing_key)
+
+        # verify that a queue is created for each unique delay,
+        # and only messages with the matching delay are in each one
+        @retry
+        def check_queue(delay):
+            backoff_queue = rabbit_manager.get_queue(
+                vhost, get_backoff_queue_name(delay)
+            )
+            assert backoff_queue['messages'] == delays.count(delay)
+
+        vhost = rabbit_config['vhost']
+        for delay in delays:
+            check_queue(delay)
 
 
 class TestMultipleMessages(object):
@@ -64,7 +138,8 @@ class TestMultipleMessages(object):
                 container, 'slow', callback=wait_for_result
             ) as result_slow:
 
-                # wait for "slow" to back off once before calling "quick"
+                # wait for "slow" to fire once before calling "quick",
+                # to make absolutely sure its backoff is dispatched first
                 with entrypoint_waiter(container, 'slow'):
                     rpc_proxy.service.slow.call_async()
                 rpc_proxy.service.quick.call_async()

@@ -5,13 +5,11 @@ machine:
     - sudo apt-get install -y erlang-nox init-system-helpers socat adduser logrotate
     - sudo curl -o rabbitmq-server_3.6.5-1_all.deb https://www.rabbitmq.com/releases/rabbitmq-server/v3.6.5/rabbitmq-server_3.6.5-1_all.deb
     - sudo dpkg -i rabbitmq-server_3.6.5-1_all.deb
-    - sudo curl -o /usr/lib/rabbitmq/lib/rabbitmq_server-3.6.5/plugins/rabbitmq_delayed_message_exchange-0.0.1.ez http://www.rabbitmq.com/community-plugins/v3.6.x/rabbitmq_delayed_message_exchange-0.0.1.ez
     - sudo rabbitmq-plugins enable rabbitmq_management
-    - sudo rabbitmq-plugins enable rabbitmq_delayed_message_exchange
     - sudo /etc/init.d/rabbitmq-server restart
 
 dependencies:
-  pre:
+  override:
     - pip install -U pip setuptools tox
     - pip install -e ".[dev]"
     - pyenv local 2.7.10 3.3.6 3.4.3
