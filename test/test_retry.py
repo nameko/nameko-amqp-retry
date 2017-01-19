@@ -21,7 +21,7 @@ from nameko_amqp_retry.rpc import rpc
 def retry(fn):
     """ Barebones retry decorator
     """
-    def wrapper(*a, **kw):
+    def wrapper(*args, **kwargs):
         exceptions = AssertionError
         max_retries = 3
         delay = 1
@@ -29,7 +29,7 @@ def retry(fn):
         counter = itertools.count()
         while True:
             try:
-                return fn(*a, **kw)
+                return fn(*args, **kwargs)
             except exceptions:
                 if next(counter) == max_retries:
                     raise
