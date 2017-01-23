@@ -65,7 +65,7 @@ class Backoff(Exception):
         if self.random_sigma:
             randomised = int(random.gauss(expiration, self.random_sigma))
             group_size = self.random_sigma / self.random_groups_per_sigma
-            expiration = round_to_nearest(randomised, base=group_size)
+            expiration = round_to_nearest(randomised, interval=group_size)
         return expiration
 
 
