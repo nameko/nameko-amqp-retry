@@ -26,7 +26,7 @@ def fast_backoff():
 
 @pytest.yield_fixture(autouse=True)
 def no_randomness():
-    with patch.object(Backoff, 'randomness', new=0):
+    with patch.object(Backoff, 'random_sigma', new=0):
         yield
 
 

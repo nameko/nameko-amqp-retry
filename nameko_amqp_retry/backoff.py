@@ -13,11 +13,20 @@ def get_backoff_queue_name(expiration):
     return "backoff--{}".format(expiration)
 
 
+def round_to_nearest(value, interval):
+    return int(interval * round(float(value) / interval))
+
+
 class Backoff(Exception):
 
     schedule = (1000, 2000, 3000, 5000, 8000, 13000, 21000, 34000, 55000)
-    randomness = 100  # standard deviation as milliseconds
     limit = 20
+
+    random_sigma = 100
+    # standard deviation as milliseconds
+
+    random_groups_per_sigma = 5
+    # random backoffs are rounded to nearest group
 
     class Expired(Exception):
         pass
@@ -53,8 +62,10 @@ class Backoff(Exception):
 
         expiration = self.get_next_schedule_item(total_attempts)
 
-        if self.randomness:
-            expiration = int(random.gauss(expiration, self.randomness))
+        if self.random_sigma:
+            randomised = int(random.gauss(expiration, self.random_sigma))
+            group_size = self.random_sigma / self.random_groups_per_sigma
+            expiration = round_to_nearest(randomised, base=group_size)
         return expiration
 
 

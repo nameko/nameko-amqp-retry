@@ -2,6 +2,8 @@ import pytest
 from mock import Mock, call, patch
 
 from nameko_amqp_retry import Backoff
+from nameko_amqp_retry.backoff import round_to_nearest
+
 
 BACKOFF_COUNT = 3
 
@@ -12,7 +14,7 @@ class TestGetNextExpiration(object):
     def backoff(self):
         class CustomBackoff(Backoff):
             schedule = [1000, 2000, 3000]
-            randomness = 0
+            random_sigma = 0
             limit = 10
 
         return CustomBackoff()
@@ -21,16 +23,16 @@ class TestGetNextExpiration(object):
     def backoff_without_limit(self):
         class CustomBackoff(Backoff):
             schedule = [1000, 2000, 3000]
-            randomness = 0
+            random_sigma = 0
             limit = 0  # no limit
 
         return CustomBackoff()
 
     @pytest.fixture
-    def backoff_with_randomness(self):
+    def backoff_with_random_sigma(self):
         class CustomBackoff(Backoff):
             schedule = [1000, 2000, 3000]
-            randomness = 100
+            random_sigma = 100
             limit = 10
 
         return CustomBackoff()
@@ -170,11 +172,11 @@ class TestGetNextExpiration(object):
         assert backoff.get_next_expiration(message, "backoff") == 3000
 
     @patch('nameko_amqp_retry.backoff.random')
-    def test_backoff_randomness(self, random_patch, backoff_with_randomness):
+    def test_backoff_randomness(self, random_patch, backoff_with_random_sigma):
 
-        random_patch.gauss.return_value = 2200.0
+        random_patch.gauss.return_value = 2205.5
 
-        backoff = backoff_with_randomness
+        backoff = backoff_with_random_sigma
 
         message = Mock()
         message.headers = {
@@ -186,5 +188,21 @@ class TestGetNextExpiration(object):
         }
         assert backoff.get_next_expiration(message, "backoff") == 2200
         assert random_patch.gauss.call_args_list == [
-            call(2000, backoff.randomness)
+            call(2000, backoff.random_sigma)
         ]
+
+
+@pytest.mark.parametrize("value,interval,result", [
+    (2000, 1, 2000),
+    (2000, 10, 2000),
+    (2001, 10, 2000),
+    (2009, 10, 2010),
+    (0, 10, 0),
+    (10, 10, 10),
+    (10, -10, 10),
+    (-10, 10, -10),
+    (-10, -10, -10),
+    (2205.5, 20, 2200),  # used in test_backoff_randomness
+])
+def test_round_to_nearest(value, interval, result):
+    assert round_to_nearest(value, interval) == result
