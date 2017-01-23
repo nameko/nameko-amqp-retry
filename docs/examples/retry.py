@@ -1,7 +1,7 @@
 import arrow
 from kombu.messaging import Queue
 
-from nameko_amqp_retry import Backoff
+from nameko_amqp_retry import Backoff, entrypoint_retry
 from nameko_amqp_retry.events import event_handler
 from nameko_amqp_retry.messaging import consume
 from nameko_amqp_retry.rpc import rpc
@@ -52,3 +52,15 @@ class Service:
             return msg
 
         raise Backoff()
+
+    @rpc
+    @entrypoint_retry(retry_for=ValueError)
+    def decorated_method(self, timestamp):
+        """ Return a message on or after `timestamp`.
+
+        The method will be called repeatedly until `timestamp` has passed.
+        """
+        if arrow.get(timestamp) < arrow.utcnow():
+            return self.generate_message()
+
+        raise ValueError()

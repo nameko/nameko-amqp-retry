@@ -36,6 +36,27 @@ This library subclasses nameko's built-in entrypoints. Use these subclasses in y
 
             return 42
 
+Alternatively, for convenience, an entrypoint can be decorated with the `entrypoint_retry` decorator:
+
+.. code-block:: python
+
+    from nameko_amqp_retry import entrypoint_retry
+    from nameko_amqp_retry.rpc import rpc
+
+    class Service:
+        name = "service"
+
+        @rpc
+        @entrypoint_retry(retry_for=ValueError)
+        def calculate(self):
+            """ Calculate something, or schedule a retry if not ready yet.
+            """
+            if not_ready_yet:
+                raise ValueError()
+
+            return 42
+
+
 The caller will see the final result, or a :class:`Backoff.Expired` exception if more than the allowed number of retries were made:
 
 .. code-block:: python
