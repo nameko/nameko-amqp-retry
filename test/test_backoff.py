@@ -45,17 +45,34 @@ class TestGetNextExpiration(object):
         message.headers = {
             'x-death': [{
                 'exchange': 'backoff',
+                'queue': 'backoff--1',
                 'count': 1
             }]
         }
         assert backoff.get_next_expiration(message, "backoff") == 2000
 
-    def test_last_backoff(self, backoff):
+    def test_last_backoff_single_queue(self, backoff):
         message = Mock()
         message.headers = {
             'x-death': [{
                 'exchange': 'backoff',
+                'queue': 'backoff--1',
                 'count': 3
+            }]
+        }
+        assert backoff.get_next_expiration(message, "backoff") == 3000
+
+    def test_last_backoff_multiple_queues(self, backoff):
+        message = Mock()
+        message.headers = {
+            'x-death': [{
+                'exchange': 'backoff',
+                'queue': 'backoff--1',
+                'count': 2
+            }, {
+                'exchange': 'backoff',
+                'queue': 'backoff--2',
+                'count': 1
             }]
         }
         assert backoff.get_next_expiration(message, "backoff") == 3000
@@ -65,6 +82,7 @@ class TestGetNextExpiration(object):
         message.headers = {
             'x-death': [{
                 'exchange': 'backoff',
+                'queue': 'backoff--1',
                 'count': 5
             }]
         }
@@ -75,6 +93,7 @@ class TestGetNextExpiration(object):
         message.headers = {
             'x-death': [{
                 'exchange': 'backoff',
+                'queue': 'backoff--1',
                 'count': 99
             }]
         }
@@ -90,7 +109,12 @@ class TestGetNextExpiration(object):
         message.headers = {
             'x-death': [{
                 'exchange': 'backoff',
-                'count': 10
+                'queue': 'backoff--1',
+                'count': 5
+            }, {
+                'exchange': 'backoff',
+                'queue': 'backoff--2',
+                'count': 5
             }]
         }
         with pytest.raises(Backoff.Expired) as exc_info:
@@ -116,14 +140,20 @@ class TestGetNextExpiration(object):
         message.headers = {
             'x-death': [{
                 'exchange': 'backoff',
+                'queue': 'backoff--1',
+                'count': 1
+            }, {
+                'exchange': 'backoff',
+                'queue': 'backoff--2',
                 'count': 1
             }, {
                 # previously deadlettered elsewhere
                 'exchange': 'not-backoff',
+                'queue': 'irrelevant',
                 'count': 99
             }]
         }
-        assert backoff.get_next_expiration(message, "backoff") == 2000
+        assert backoff.get_next_expiration(message, "backoff") == 3000
 
     def test_no_limit(self, backoff_without_limit):
 
@@ -133,6 +163,7 @@ class TestGetNextExpiration(object):
         message.headers = {
             'x-death': [{
                 'exchange': 'backoff',
+                'queue': 'backoff--1',
                 'count': 999
             }]
         }
@@ -149,6 +180,7 @@ class TestGetNextExpiration(object):
         message.headers = {
             'x-death': [{
                 'exchange': 'backoff',
+                'queue': 'backoff--1',
                 'count': 1
             }]
         }
