@@ -19,8 +19,8 @@ BACKOFF_COUNT = 3
 
 @pytest.yield_fixture(autouse=True)
 def fast_backoff():
-    value = 50
-    with patch.object(Backoff, 'schedule', new=[value]):
+    value = (50, 75, 100)
+    with patch.object(Backoff, 'schedule', new=value):
         yield value
 
 
