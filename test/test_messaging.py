@@ -208,12 +208,14 @@ class TestMessaging(object):
 
         # ensure all messages are processed
         vhost = rabbit_config['vhost']
-        backoff_queue = rabbit_manager.get_queue(
-            vhost, get_backoff_queue_name(fast_backoff)
-        )
+        for delay in fast_backoff:
+            backoff_queue = rabbit_manager.get_queue(
+                vhost, get_backoff_queue_name(delay)
+            )
+            assert backoff_queue['messages'] == 0
+
         service_queue_one = rabbit_manager.get_queue(vhost, queue_one.name)
         service_queue_two = rabbit_manager.get_queue(vhost, queue_two.name)
-        assert backoff_queue['messages'] == 0
         assert service_queue_one['messages'] == 0
         assert service_queue_two['messages'] == 0
 
