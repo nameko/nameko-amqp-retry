@@ -41,8 +41,7 @@ class Backoff(Exception):
         total_attempts = 0
         for deadlettered in message.headers.get('x-death', ()):
             if deadlettered['exchange'] == backoff_exchange_name:
-                total_attempts = int(deadlettered['count'])
-                break
+                total_attempts += int(deadlettered['count'])
 
         if self.limit and total_attempts >= self.limit:
             expired = Backoff.Expired(
