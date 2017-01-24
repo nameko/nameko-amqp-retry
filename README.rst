@@ -36,27 +36,6 @@ This library subclasses nameko's built-in entrypoints. Use these subclasses in y
 
             return 42
 
-Alternatively, for convenience, an entrypoint can be decorated with the `entrypoint_retry` decorator:
-
-.. code-block:: python
-
-    from nameko_amqp_retry import entrypoint_retry
-    from nameko_amqp_retry.rpc import rpc
-
-    class Service:
-        name = "service"
-
-        @rpc
-        @entrypoint_retry(retry_for=ValueError)
-        def calculate(self):
-            """ Calculate something, or schedule a retry if not ready yet.
-            """
-            if not_ready_yet:
-                raise ValueError()
-
-            return 42
-
-
 The caller will see the final result, or a :class:`Backoff.Expired` exception if more than the allowed number of retries were made:
 
 .. code-block:: python
@@ -113,6 +92,43 @@ Dynamic schedule:
         @classmethod
         def get_next_schedule_item(cls, index):
             ...
+
+Alternatively, an entrypoint can be decorated with the `entrypoint_retry` decorator:
+
+.. code-block:: python
+
+    from nameko_amqp_retry import entrypoint_retry
+    from nameko_amqp_retry.rpc import rpc
+
+    class Service:
+        name = "service"
+
+        @rpc
+        @entrypoint_retry(retry_for=ValueError)
+        def calculate(self):
+            """ Calculate something, or schedule a retry if not ready yet.
+            """
+            if not_ready_yet:
+                raise ValueError()
+
+            return 42
+            
+        @rpc
+        @entrypoint_retry(
+            retry_for=(TypeError, ValueError),
+            limit=5,
+            schedule=(500, 600, 700, 800, 900, 1000),
+        )
+        def do_something(self):
+            """ Calculate something else, or schedule a retry if not ready yet.
+            """
+            if type_not_ready_yet:
+                raise TypeError()
+                
+            if value_not_ready_yet:
+                raise ValueError()
+
+            return 24
 
 
 See docs/examples for more.
