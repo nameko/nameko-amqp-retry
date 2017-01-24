@@ -1,0 +1,21 @@
+Release Notes
+=============
+
+Semantic versioning is followed.
+
+Version 0.2.0
+-------------
+
+Released 2017-01-24
+
+* Fixes bug where deadletter counts were not summed correctly across
+  multiple queues.
+* Reduces the number of queues created when randomness is applied.
+* Adds `entrypoint_retry` decorator to retry on specific errors.
+
+Version 0.1.0
+-------------
+
+Released 2017-01-24
+
+* Initial release
