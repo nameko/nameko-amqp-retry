@@ -117,7 +117,7 @@ Alternatively, an entrypoint can be decorated with the `entrypoint_retry` decora
         @entrypoint_retry(
             retry_for=(TypeError, ValueError),
             limit=5,
-            schedule=(500, 600, 700, 800, 900, 1000),
+            schedule=(500, 600, 700, 800, 900),
         )
         def do_something(self):
             """ Calculate something else, or schedule a retry if not ready yet.
