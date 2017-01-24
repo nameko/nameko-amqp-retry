@@ -8,11 +8,11 @@ def backoff_factory(limit=None, schedule=None):
     retry_limit = Backoff.limit if limit is None else limit
     retry_schedule = Backoff.schedule if schedule is None else schedule
 
-    class CustomLimitBackoff(Backoff):
+    class CustomBackoff(Backoff):
         schedule = retry_schedule
         limit = retry_limit
 
-    return CustomLimitBackoff
+    return CustomBackoff
 
 
 def entrypoint_retry(retry_for=Exception, limit=None, schedule=None):
@@ -35,13 +35,13 @@ def entrypoint_retry(retry_for=Exception, limit=None, schedule=None):
         A tuple defining the number of milliseconds to wait between each
         retry. If not given, the default `Backoff.schedule` will be used.
     """
-    backoff = backoff_factory(limit=limit, schedule=schedule)
+    backoff_cls = backoff_factory(limit=limit, schedule=schedule)
 
     @wrapt.decorator
     def wrapper(wrapped, instance, args, kwargs):
         try:
             return wrapped(*args, **kwargs)
         except retry_for as exc:
-            six.raise_from(backoff(), exc)
+            six.raise_from(backoff_cls(), exc)
 
     return wrapper

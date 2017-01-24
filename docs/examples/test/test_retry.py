@@ -50,19 +50,6 @@ class TestBackoff(object):
             res = service_rpc.method(timestamp.isoformat())
         assert arrow.get(re.match("Time is (.+)", res).group(1)) >= timestamp
 
-    def test_decorated_rpc(self, container_factory, rabbit_config):
-
-        from examples.retry import Service
-
-        container = container_factory(Service, rabbit_config)
-        container.start()
-
-        timestamp = arrow.utcnow().replace(seconds=+1)
-
-        with ServiceRpcProxy('service', rabbit_config) as service_rpc:
-            res = service_rpc.decorated_method(timestamp.isoformat())
-        assert arrow.get(re.match("Time is (.+)", res).group(1)) >= timestamp
-
     def test_event(self, container_factory, rabbit_config):
 
         from examples.retry import Service
@@ -99,4 +86,19 @@ class TestBackoff(object):
             publish(payload, routing_key="messages")
 
         res = result.get()
+        assert arrow.get(re.match("Time is (.+)", res).group(1)) >= timestamp
+
+
+class TestDecorator(object):
+    def test_decorated_rpc(self, container_factory, rabbit_config):
+
+        from examples.retry import Service
+
+        container = container_factory(Service, rabbit_config)
+        container.start()
+
+        timestamp = arrow.utcnow().replace(seconds=+1)
+
+        with ServiceRpcProxy('service', rabbit_config) as service_rpc:
+            res = service_rpc.decorated_method(timestamp.isoformat())
         assert arrow.get(re.match("Time is (.+)", res).group(1)) >= timestamp

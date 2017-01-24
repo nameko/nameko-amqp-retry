@@ -93,7 +93,7 @@ Dynamic schedule:
         def get_next_schedule_item(cls, index):
             ...
 
-Alternatively, an entrypoint can be decorated with the `entrypoint_retry` decorator:
+Alternatively, an entrypoint can be decorated with the `entrypoint_retry` decorator, to automatically retry the method if it raises certain exceptions:
 
 .. code-block:: python
 
@@ -112,7 +112,7 @@ Alternatively, an entrypoint can be decorated with the `entrypoint_retry` decora
                 raise ValueError()
 
             return 42
-            
+
         @rpc
         @entrypoint_retry(
             retry_for=(TypeError, ValueError),
@@ -124,7 +124,7 @@ Alternatively, an entrypoint can be decorated with the `entrypoint_retry` decora
             """
             if type_not_ready_yet:
                 raise TypeError()
-                
+
             if value_not_ready_yet:
                 raise ValueError()
 
