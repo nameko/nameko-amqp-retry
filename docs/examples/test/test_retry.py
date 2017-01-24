@@ -87,3 +87,18 @@ class TestBackoff(object):
 
         res = result.get()
         assert arrow.get(re.match("Time is (.+)", res).group(1)) >= timestamp
+
+
+class TestDecorator(object):
+    def test_decorated_rpc(self, container_factory, rabbit_config):
+
+        from examples.retry import Service
+
+        container = container_factory(Service, rabbit_config)
+        container.start()
+
+        timestamp = arrow.utcnow().replace(seconds=+1)
+
+        with ServiceRpcProxy('service', rabbit_config) as service_rpc:
+            res = service_rpc.decorated_method(timestamp.isoformat())
+        assert arrow.get(re.match("Time is (.+)", res).group(1)) >= timestamp
