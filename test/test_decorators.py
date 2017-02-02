@@ -14,7 +14,11 @@ class TestEntrypointRetry(object):
                 raise raises
             return arg1
 
-        @entrypoint_retry(limit=3, schedule=(100, 200))
+        @entrypoint_retry(
+            limit=3,
+            schedule=(100, 200),
+            random_sigma=200,
+            random_groups_per_sigma=10)
         def method2(self, arg1, raises=None, kwarg1=None):
             if raises:
                 raise raises
@@ -49,6 +53,8 @@ class TestEntrypointRetry(object):
 
         assert exc.value.limit == 3
         assert exc.value.schedule == (100, 200)
+        assert exc.value.random_sigma == 200
+        assert exc.value.random_groups_per_sigma == 10
 
     def test_custom_retry_for(self, service):
         # value error will just be raised (it is not in the `retry_for`)
