@@ -5,12 +5,18 @@ from .backoff import Backoff
 
 
 def backoff_factory(*args, **kwargs):
-    retry_limit = kwargs.get('limit') or Backoff.limit
-    retry_schedule = kwargs.get('schedule') or Backoff.schedule
-    retry_random_sigma = kwargs.get('random_sigma') or Backoff.random_sigma
-    retry_random_groups_per_sigma = kwargs.get('random_groups_per_sigma') or (
-        Backoff.random_groups_per_sigma
-    )
+    limit = kwargs.get('limit')
+    schedule = kwargs.get('schedule')
+    random_sigma = kwargs.get('random_sigma')
+    random_groups_per_sigma = kwargs.get('random_groups_per_sigma')
+
+    retry_limit = Backoff.limit if limit is None else limit
+    retry_schedule = Backoff.schedule if schedule is None else schedule
+    retry_random_sigma = (
+        Backoff.random_sigma if random_sigma is None else random_sigma)
+    retry_random_groups_per_sigma = (
+        Backoff.random_groups_per_sigma if
+        random_groups_per_sigma is None else random_groups_per_sigma)
 
     class CustomBackoff(Backoff):
         schedule = retry_schedule
