@@ -3,6 +3,14 @@ Release Notes
 
 Semantic versioning is followed.
 
+Version 0.3.0
+-------------
+
+Released 2017-02-02
+
+* Allow to override `random_sigma` and `random_groups_per_sigma` when using
+  `entrypoint_retry` decorator.
+
 Version 0.2.0
 -------------
 
