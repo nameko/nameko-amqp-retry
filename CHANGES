@@ -3,6 +3,13 @@ Release Notes
 
 Semantic versioning is followed.
 
+Version 0.3.2
+-------------
+
+Released 2017-03-31
+
+Include retry_policy when re-publishing
+
 Version 0.3.1
 -------------
 

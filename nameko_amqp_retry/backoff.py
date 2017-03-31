@@ -5,7 +5,7 @@ from kombu import Connection
 from kombu.common import maybe_declare
 from kombu.messaging import Exchange, Queue
 from kombu.pools import connections, producers
-from nameko.constants import AMQP_URI_CONFIG_KEY
+from nameko.constants import AMQP_URI_CONFIG_KEY, DEFAULT_RETRY_POLICY
 from nameko.extensions import SharedExtension
 
 
@@ -121,5 +121,7 @@ class BackoffPublisher(SharedExtension):
                     exchange=self.exchange,
                     routing_key=target_queue,
                     expiration=expiration_seconds,
+                    retry=True,
+                    retry_policy=DEFAULT_RETRY_POLICY,
                     **properties
                 )
