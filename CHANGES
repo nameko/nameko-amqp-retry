@@ -3,6 +3,13 @@ Release Notes
 
 Semantic versioning is followed.
 
+Version 0.3.3
+-------------
+
+Released 2017-04-06
+
+Ensure exchange and queue declaration has retry-policy when re-publishing
+
 Version 0.3.2
 -------------
 

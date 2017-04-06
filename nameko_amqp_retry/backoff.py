@@ -2,9 +2,8 @@ import random
 
 import six
 from kombu import Connection
-from kombu.common import maybe_declare
 from kombu.messaging import Exchange, Queue
-from kombu.pools import connections, producers
+from kombu.pools import producers
 from nameko.constants import AMQP_URI_CONFIG_KEY, DEFAULT_RETRY_POLICY
 from nameko.extensions import SharedExtension
 
@@ -102,26 +101,22 @@ class BackoffPublisher(SharedExtension):
 
         # republish to appropriate backoff queue
         conn = Connection(self.container.config[AMQP_URI_CONFIG_KEY])
-        with connections[conn].acquire(block=True) as connection:
+        with producers[conn].acquire(block=True) as producer:
 
-            maybe_declare(self.exchange, connection)
-            maybe_declare(queue, connection)
+            properties = message.properties.copy()
+            headers = properties.pop('application_headers')
 
-            with producers[conn].acquire(block=True) as producer:
+            headers['backoff'] = expiration
+            expiration_seconds = float(expiration) / 1000
 
-                properties = message.properties.copy()
-                headers = properties.pop('application_headers')
-
-                headers['backoff'] = expiration
-                expiration_seconds = float(expiration) / 1000
-
-                producer.publish(
-                    message.body,
-                    headers=headers,
-                    exchange=self.exchange,
-                    routing_key=target_queue,
-                    expiration=expiration_seconds,
-                    retry=True,
-                    retry_policy=DEFAULT_RETRY_POLICY,
-                    **properties
-                )
+            producer.publish(
+                message.body,
+                headers=headers,
+                exchange=self.exchange,
+                routing_key=target_queue,
+                expiration=expiration_seconds,
+                retry=True,
+                retry_policy=DEFAULT_RETRY_POLICY,
+                declare=[self.exchange, queue],
+                **properties
+            )
