@@ -66,6 +66,9 @@ class Backoff(Exception):
             group_size = self.random_sigma / self.random_groups_per_sigma
             expiration = round_to_nearest(randomised, interval=group_size)
 
+        # Prevent any negative values created by randomness
+        expiration = abs(expiration)
+
         self._result_attempts = total_attempts
         self._result_expiration = expiration
         return expiration
