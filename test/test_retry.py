@@ -181,14 +181,12 @@ class TestNegativeExpiration(object):
     def test_negative_expiration(
         self, container, entrypoint_tracker, rpc_proxy, wait_for_result
     ):
-        # wait for both entrypoints to generate a result
         with entrypoint_waiter(
             container, 'bad', callback=wait_for_result
         ):
-            # wait for "bad" to fire once before calling "bad",
             rpc_proxy.service.bad.call_async()
 
-        assert len(entrypoint_tracker.get_results()) > 1;
+        assert len(entrypoint_tracker.get_results()) > 1
 
 
 class TestCallStack(object):
