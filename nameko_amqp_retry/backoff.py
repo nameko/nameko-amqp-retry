@@ -65,7 +65,19 @@ class Backoff(Exception):
             randomised = int(random.gauss(expiration, self.random_sigma))
             group_size = self.random_sigma / self.random_groups_per_sigma
             expiration = round_to_nearest(randomised, interval=group_size)
+
+        self._result_attempts = total_attempts
+        self._result_expiration = expiration
         return expiration
+
+    def __str__(self):
+        return '{}({})'.format(
+            type(self),
+            'retry #{} in {}ms'.format(
+                self._result_attempts + 1, self._result_expiration)
+            if hasattr(self, '_result_expiration')
+            else 'next retry not calculated'
+        )
 
 
 class BackoffPublisher(SharedExtension):
