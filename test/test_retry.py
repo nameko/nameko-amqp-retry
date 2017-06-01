@@ -178,7 +178,7 @@ class TestNegativeExpiration(object):
 
         return container
 
-    def test_negative_expiration(
+    def test_negative_expiration_coerced_to_zero(
         self, container, entrypoint_tracker, rpc_proxy, wait_for_result
     ):
         with entrypoint_waiter(
