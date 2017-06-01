@@ -40,8 +40,7 @@ class TestGetNextExpiration(object):
     def test_first_backoff(self, backoff):
         message = Mock()
         message.headers = {}
-        backoff.calculate_next_expiration(message, "backoff")
-        assert backoff.next_expiration == 1000
+        assert backoff.next(message, "backoff") == 1000
 
     def test_next_backoff(self, backoff):
         message = Mock()
@@ -52,8 +51,7 @@ class TestGetNextExpiration(object):
                 'count': 1
             }]
         }
-        backoff.calculate_next_expiration(message, "backoff")
-        assert backoff.next_expiration == 2000
+        assert backoff.next(message, "backoff") == 2000
 
     def test_last_backoff_single_queue(self, backoff):
         message = Mock()
@@ -64,8 +62,7 @@ class TestGetNextExpiration(object):
                 'count': 3
             }]
         }
-        backoff.calculate_next_expiration(message, "backoff")
-        assert backoff.next_expiration == 3000
+        assert backoff.next(message, "backoff") == 3000
 
     def test_last_backoff_multiple_queues(self, backoff):
         message = Mock()
@@ -80,8 +77,7 @@ class TestGetNextExpiration(object):
                 'count': 1
             }]
         }
-        backoff.calculate_next_expiration(message, "backoff")
-        assert backoff.next_expiration == 3000
+        assert backoff.next(message, "backoff") == 3000
 
     def test_count_greater_than_schedule_length(self, backoff):
         message = Mock()
@@ -92,8 +88,7 @@ class TestGetNextExpiration(object):
                 'count': 5
             }]
         }
-        backoff.calculate_next_expiration(message, "backoff")
-        assert backoff.next_expiration == 3000
+        assert backoff.next(message, "backoff") == 3000
 
     def test_count_greater_than_limit(self, backoff):
         message = Mock()
@@ -105,7 +100,7 @@ class TestGetNextExpiration(object):
             }]
         }
         with pytest.raises(Backoff.Expired) as exc_info:
-            backoff.calculate_next_expiration(message, "backoff")
+            backoff.next(message, "backoff")
         # 27 = 1 + 2 + 3 * 8
         assert str(exc_info.value) == (
             "Backoff aborted after '10' retries (~27 seconds)"
@@ -125,7 +120,7 @@ class TestGetNextExpiration(object):
             }]
         }
         with pytest.raises(Backoff.Expired) as exc_info:
-            backoff.calculate_next_expiration(message, "backoff")
+            backoff.next(message, "backoff")
         # 27 = 1 + 2 + 3 * 8
         assert str(exc_info.value) == (
             "Backoff aborted after '10' retries (~27 seconds)"
@@ -140,8 +135,7 @@ class TestGetNextExpiration(object):
                 'count': 99
             }]
         }
-        backoff.calculate_next_expiration(message, "backoff")
-        assert backoff.next_expiration == 1000
+        assert backoff.next(message, "backoff") == 1000
 
     def test_previously_deadlettered_next_backoff(self, backoff):
         message = Mock()
@@ -161,8 +155,7 @@ class TestGetNextExpiration(object):
                 'count': 99
             }]
         }
-        backoff.calculate_next_expiration(message, "backoff")
-        assert backoff.next_expiration == 3000
+        assert backoff.next(message, "backoff") == 3000
 
     def test_no_limit(self, backoff_without_limit):
 
@@ -176,8 +169,7 @@ class TestGetNextExpiration(object):
                 'count': 999
             }]
         }
-        backoff.calculate_next_expiration(message, "backoff")
-        assert backoff.next_expiration == 3000
+        assert backoff.next(message, "backoff") == 3000
 
     @patch('nameko_amqp_retry.backoff.random')
     def test_backoff_randomness(self, random_patch, backoff_with_random_sigma):
@@ -194,8 +186,7 @@ class TestGetNextExpiration(object):
                 'count': 1
             }]
         }
-        backoff.calculate_next_expiration(message, "backoff")
-        assert backoff.next_expiration == 2200
+        assert backoff.next(message, "backoff") == 2200
         assert random_patch.gauss.call_args_list == [
             call(2000, backoff.random_sigma)
         ]
@@ -220,7 +211,7 @@ class TestGetNextExpiration(object):
                 'count': 1
             }]
         }
-        backoff.calculate_next_expiration(message, "backoff")
+        backoff.next(message, "backoff")
         assert "(retry #4 in 3000ms)" in str(backoff)
 
 
