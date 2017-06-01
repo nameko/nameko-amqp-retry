@@ -30,7 +30,8 @@ class Backoff(Exception):
     class Expired(Exception):
         pass
 
-    def __init__(self):
+    def __init__(self, *args):
+        super(Backoff, self).__init__(*args)
         self._total_attempts = None
         self._next_expiration = None
 
