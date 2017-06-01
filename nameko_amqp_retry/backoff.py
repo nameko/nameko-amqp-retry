@@ -30,6 +30,11 @@ class Backoff(Exception):
     class Expired(Exception):
         pass
 
+    def __init__(self, *args):
+        super(Backoff, self).__init__(*args)
+        self._total_attempts = None
+        self._next_expiration = None
+
     @property
     def max_delay(self):
         return sum(
@@ -44,7 +49,7 @@ class Backoff(Exception):
             item = cls.schedule[index]
         return item
 
-    def get_next_expiration(self, message, backoff_exchange_name):
+    def next(self, message, backoff_exchange_name):
 
         total_attempts = 0
         for deadlettered in message.headers.get('x-death', ()):
@@ -65,7 +70,23 @@ class Backoff(Exception):
             randomised = int(random.gauss(expiration, self.random_sigma))
             group_size = self.random_sigma / self.random_groups_per_sigma
             expiration = round_to_nearest(randomised, interval=group_size)
+
+        # Prevent any negative values created by randomness
+        expiration = abs(expiration)
+
+        # store calculation results on self.
+        self._next_expiration = expiration
+        self._total_attempts = total_attempts
+
         return expiration
+
+    def __str__(self):
+        return 'Backoff({})'.format(
+            'retry #{} in {}ms'.format(
+                self._total_attempts + 1, self._next_expiration)
+            if self._next_expiration is not None
+            else 'uninitialised'
+        )
 
 
 class BackoffPublisher(SharedExtension):
@@ -94,9 +115,7 @@ class BackoffPublisher(SharedExtension):
 
     def republish(self, backoff_exc, message, target_queue):
 
-        expiration = backoff_exc.get_next_expiration(
-            message, self.exchange.name
-        )
+        expiration = backoff_exc.next(message, self.exchange.name)
         queue = self.make_queue(expiration)
 
         # republish to appropriate backoff queue

@@ -3,6 +3,14 @@ Release Notes
 
 Semantic versioning is followed.
 
+Version 0.3.4
+-------------
+
+Released 2017-06-01
+
+Include next-retry info in the Backoff error description.
+Prevent negative values being used as expiration times.
+
 Version 0.3.3
 -------------
 

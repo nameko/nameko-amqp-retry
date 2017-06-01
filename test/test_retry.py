@@ -157,6 +157,38 @@ class TestMultipleMessages(object):
         )
 
 
+class TestNegativeExpiration(object):
+
+    @pytest.fixture
+    def container(self, container_factory, rabbit_config, counter):
+
+        class Service(object):
+            name = "service"
+
+            backoff = BackoffPublisher()
+
+            @rpc
+            def bad(self):
+                class BadBackoff(Backoff):
+                    schedule = (-10, )
+                raise BadBackoff()
+
+        container = container_factory(Service, rabbit_config)
+        container.start()
+
+        return container
+
+    def test_negative_expiration_coerced_to_zero(
+        self, container, entrypoint_tracker, rpc_proxy, wait_for_result
+    ):
+        with entrypoint_waiter(
+            container, 'bad', callback=wait_for_result
+        ):
+            rpc_proxy.service.bad.call_async()
+
+        assert len(entrypoint_tracker.get_results()) > 1
+
+
 class TestCallStack(object):
 
     @pytest.fixture
