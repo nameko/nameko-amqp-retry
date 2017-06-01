@@ -193,10 +193,7 @@ class TestGetNextExpiration(object):
 
     def test_uncalculated_to_string(self):
         backoff = Backoff()
-
-        assert str(backoff) == (
-            "<class 'nameko_amqp_retry.backoff.Backoff'>(not-yet-calculated)"
-        )
+        assert str(backoff) == "Backoff(uninitialised)"
 
     def test_calculated_to_string(self, backoff):
         message = Mock()
@@ -212,7 +209,7 @@ class TestGetNextExpiration(object):
             }]
         }
         backoff.next(message, "backoff")
-        assert "(retry #4 in 3000ms)" in str(backoff)
+        assert "Backoff(retry #4 in 3000ms)" == str(backoff)
 
 
 @pytest.mark.parametrize("value,interval,result", [

@@ -80,12 +80,11 @@ class Backoff(Exception):
         return expiration
 
     def __str__(self):
-        return '{}({})'.format(
-            type(self),
+        return 'Backoff({})'.format(
             'retry #{} in {}ms'.format(
                 self._total_attempts + 1, self._next_expiration)
             if self._next_expiration is not None
-            else 'not-yet-calculated'
+            else 'uninitialised'
         )
 
 
