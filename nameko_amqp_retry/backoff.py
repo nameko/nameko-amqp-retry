@@ -8,6 +8,9 @@ from nameko.constants import AMQP_URI_CONFIG_KEY, DEFAULT_RETRY_POLICY
 from nameko.extensions import SharedExtension
 
 
+EXPIRY_GRACE_PERIOD = 100  # ms
+
+
 def get_backoff_queue_name(expiration):
     return "backoff--{}".format(expiration)
 
@@ -87,6 +90,7 @@ class BackoffPublisher(SharedExtension):
                 'x-match': 'any'
             },
             queue_arguments={
+                'x-expires': expiration + EXPIRY_GRACE_PERIOD,
                 'x-dead-letter-exchange': ""   # default exchange
             }
         )
