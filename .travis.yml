@@ -15,7 +15,6 @@ env:
   - TOX_ENV=py34-examples
 script:
   - tox -e $TOX_ENV -- pip install eventlet==0.20.0
-  - tox -e $TOX_ENV
 deploy:
   provider: pypi
   user: mattbennett
