@@ -129,7 +129,7 @@ class TestQueueExpiry(object):
 
     def test_queues_removed(
         self, container, publish_message, exchange, queue, counter,
-        rabbit_config, rabbit_manager
+        rabbit_config, rabbit_manager, fast_expire
     ):
         """ Backoff queues should be removed after their messages are
         redelivered.
@@ -148,8 +148,7 @@ class TestQueueExpiry(object):
                 publish_message(exchange, delay, routing_key=queue.routing_key)
 
         # wait for long enough for the queues to expire
-        # i.e. max(delays) + EXPIRY_GRACE_PERIOD
-        time.sleep(.2)
+        time.sleep((max(delays) + fast_expire) / 1000.0)
 
         # verify the queues have been removed
         vhost = rabbit_config['vhost']
