@@ -8,7 +8,7 @@ from nameko.constants import AMQP_URI_CONFIG_KEY, DEFAULT_RETRY_POLICY
 from nameko.extensions import SharedExtension
 
 
-EXPIRY_GRACE_PERIOD = 100  # ms
+EXPIRY_GRACE_PERIOD = 5000  # ms
 
 
 def get_backoff_queue_name(expiration):
