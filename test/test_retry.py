@@ -104,6 +104,12 @@ class TestQueueExpiry(object):
     def fast_backoff(self):
         yield
 
+    @pytest.yield_fixture(autouse=True)
+    def fast_expire(self):
+        exp = 500
+        with patch('nameko_amqp_retry.backoff.EXPIRY_GRACE_PERIOD', new=exp):
+            yield exp
+
     @pytest.fixture
     def container(self, container_factory, rabbit_config, queue):
 
@@ -156,12 +162,12 @@ class TestQueueExpiry(object):
 
     def test_republishing_redeclares(
         self, container, publish_message, exchange, queue, counter,
-        rabbit_config, rabbit_manager
+        rabbit_config, rabbit_manager, fast_expire
     ):
         """ Queue expiry must be reset when a new message is published to
         the backoff queue
         """
-        delays = [50, 50, 50]
+        delays = [100] * 3
 
         def all_expired(worker_ctx, res, exc_info):
             if not issubclass(exc_info[0], Backoff.Expired):
@@ -174,12 +180,12 @@ class TestQueueExpiry(object):
         with entrypoint_waiter(container, 'backoff', callback=all_expired):
             for delay in delays:
                 publish_message(exchange, delay, routing_key=queue.routing_key)
-                time.sleep(EXPIRY_GRACE_PERIOD / 1000)
+                time.sleep(fast_expire / 1000.0)
 
         # the entrypoint waiter blocks until every published message expires
         # (after exactly one backoff). if the subsequent publishes didn't
         # redeclare the queue, the later messages would be lost when the queue
-        # was removed (50ms + EXPIRY_GRACE_PERIOD after the first publish)
+        # was removed (50ms + fast_expire after the first publish)
 
 
 class TestMultipleMessages(object):

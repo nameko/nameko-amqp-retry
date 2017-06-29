@@ -2,6 +2,7 @@ import random
 
 import six
 from kombu import Connection
+from kombu.common import maybe_declare
 from kombu.messaging import Exchange, Queue
 from kombu.pools import producers
 from nameko.constants import AMQP_URI_CONFIG_KEY, DEFAULT_RETRY_POLICY
@@ -112,6 +113,10 @@ class BackoffPublisher(SharedExtension):
 
             headers['backoff'] = expiration
             expiration_seconds = float(expiration) / 1000
+
+            # force redeclaration; the publisher will skip declaration if
+            # the entity has previously been declared by the same connection
+            maybe_declare(queue, conn)
 
             producer.publish(
                 message.body,
