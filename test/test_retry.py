@@ -1,6 +1,6 @@
+import itertools
 import json
 import time
-import itertools
 
 import pytest
 from kombu import Connection
@@ -11,9 +11,11 @@ from mock import ANY, patch
 from nameko.constants import AMQP_URI_CONFIG_KEY
 from nameko.extensions import DependencyProvider
 from nameko.testing.services import entrypoint_waiter
+from requests.exceptions import HTTPError
 
 from nameko_amqp_retry import Backoff, BackoffPublisher
-from nameko_amqp_retry.backoff import get_backoff_queue_name
+from nameko_amqp_retry.backoff import (
+    EXPIRY_GRACE_PERIOD, get_backoff_queue_name)
 from nameko_amqp_retry.messaging import consume
 from nameko_amqp_retry.rpc import rpc
 
@@ -92,8 +94,97 @@ class TestPublisher(object):
             assert backoff_queue['messages'] == delays.count(delay)
 
         vhost = rabbit_config['vhost']
-        for delay in delays:
+        for delay in set(delays):
             check_queue(delay)
+
+
+class TestQueueExpiry(object):
+
+    @pytest.yield_fixture(autouse=True)
+    def fast_backoff(self):
+        yield
+
+    @pytest.yield_fixture(autouse=True)
+    def fast_expire(self):
+        exp = 500
+        with patch('nameko_amqp_retry.backoff.EXPIRY_GRACE_PERIOD', new=exp):
+            yield exp
+
+    @pytest.fixture
+    def container(self, container_factory, rabbit_config, queue):
+
+        class Service(object):
+            name = "service"
+
+            @consume(queue)
+            def backoff(self, delay):
+                class DynamicBackoff(Backoff):
+                    schedule = (delay,)
+                    limit = 1
+                raise DynamicBackoff()
+
+        container = container_factory(Service, rabbit_config)
+        container.start()
+        return container
+
+    def test_queues_removed(
+        self, container, publish_message, exchange, queue, counter,
+        rabbit_config, rabbit_manager, fast_expire
+    ):
+        """ Backoff queues should be removed after their messages are
+        redelivered.
+        """
+        delays = [50, 100, 100, 100, 50]
+
+        def all_expired(worker_ctx, res, exc_info):
+            if not issubclass(exc_info[0], Backoff.Expired):
+                return
+            if counter.increment() == len(delays):
+                return True
+
+        # cause multiple unique backoffs to be raised
+        with entrypoint_waiter(container, 'backoff', callback=all_expired):
+            for delay in delays:
+                publish_message(exchange, delay, routing_key=queue.routing_key)
+
+        # wait for long enough for the queues to expire
+        time.sleep((max(delays) + fast_expire) / 1000.0)
+
+        # verify the queues have been removed
+        vhost = rabbit_config['vhost']
+        for delay in set(delays):
+            with pytest.raises(HTTPError) as raised:
+                rabbit_manager.get_queue(
+                    vhost, get_backoff_queue_name(delay)
+                )
+            assert raised.value.response.status_code == 404
+
+    def test_republishing_redeclares(
+        self, container, publish_message, exchange, queue, counter,
+        rabbit_config, rabbit_manager, fast_expire
+    ):
+        """ Queue expiry must be reset when a new message is published to
+        the backoff queue
+        """
+        delays = [100] * 3
+
+        def all_expired(worker_ctx, res, exc_info):
+            if not issubclass(exc_info[0], Backoff.Expired):
+                return
+            if counter.increment() == len(delays):
+                return True
+
+        # cause multiple unique backoffs to be raised, but wait for
+        # EXPIRY_GRACE_PERIOD between each publish.
+        with entrypoint_waiter(container, 'backoff', callback=all_expired):
+            for delay in delays:
+                publish_message(exchange, delay, routing_key=queue.routing_key)
+                time.sleep(fast_expire / 1000.0)
+
+        # the entrypoint waiter blocks until every published message expires
+        # (after exactly one backoff). if the subsequent publishes didn't
+        # redeclare the queue, the later messages would be lost when the queue
+        # was removed (50ms + fast_expire after the first publish)
 
 
 class TestMultipleMessages(object):
