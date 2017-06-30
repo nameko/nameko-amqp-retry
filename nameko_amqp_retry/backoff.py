@@ -116,7 +116,9 @@ class BackoffPublisher(SharedExtension):
 
             # force redeclaration; the publisher will skip declaration if
             # the entity has previously been declared by the same connection
-            maybe_declare(queue, conn)
+            maybe_declare(
+                queue, conn, retry=True, retry_policy=DEFAULT_RETRY_POLICY
+            )
 
             producer.publish(
                 message.body,
