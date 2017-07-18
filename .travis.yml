@@ -10,7 +10,6 @@ install:
   - pip install tox
 env:
   - TOX_ENV=py27-lib
-  - TOX_ENV=py33-lib
   - TOX_ENV=py34-lib
   - TOX_ENV=py34-examples
 script:
