@@ -13,7 +13,7 @@ EXPIRY_GRACE_PERIOD = 5000  # ms
 
 
 def get_backoff_queue_name(expiration):
-    return "backoff--{}".format(expiration)
+    return "backoff--{}ms".format(expiration)
 
 
 def round_to_nearest(value, interval):
