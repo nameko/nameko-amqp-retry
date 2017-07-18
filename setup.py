@@ -3,7 +3,7 @@ from setuptools import find_packages, setup
 
 setup(
     name='nameko-amqp-retry',
-    version='0.4.0',
+    version='0.4.1',
     description='Nameko extension allowing AMQP entrypoints to retry later',
     author='Student.com',
     url='http://github.com/nameko/nameko-amqp-retry',
@@ -14,6 +14,7 @@ setup(
     ],
     extras_require={
         'dev': [
+            "arrow==0.8.0",
             "coverage==4.0.3",
             "flake8==2.5.0",
             "pylint==1.5.1",

@@ -3,6 +3,13 @@ Release Notes
 
 Semantic versioning is followed.
 
+Version 0.4.1
+-------------
+
+Release 2017-07-18
+
+Change queue name to differentiate expiring queues from any existing queues.
+
 Version 0.4.0
 -------------
 
