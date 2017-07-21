@@ -3,6 +3,13 @@ Release Notes
 
 Semantic versioning is followed.
 
+Version 0.4.2
+-------------
+
+Release 2017-07-21
+
+Uses publish-confirms when republishing to backoff queues.
+
 Version 0.4.1
 -------------
 
