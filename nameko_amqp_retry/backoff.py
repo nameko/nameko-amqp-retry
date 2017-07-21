@@ -123,10 +123,8 @@ class BackoffPublisher(SharedExtension):
         expiration = backoff_exc.next(message, self.exchange.name)
         queue = self.make_queue(expiration)
 
-        amqp_uri = self.container.config[AMQP_URI_CONFIG_KEY]
-
         # republish to appropriate backoff queue
-        conn = Connection(amqp_uri)
+        amqp_uri = self.container.config[AMQP_URI_CONFIG_KEY]
         with get_producer(amqp_uri) as producer:
 
             properties = message.properties.copy()
@@ -137,6 +135,7 @@ class BackoffPublisher(SharedExtension):
 
             # force redeclaration; the publisher will skip declaration if
             # the entity has previously been declared by the same connection
+            conn = Connection(amqp_uri)
             maybe_declare(queue, conn, retry=True, **DEFAULT_RETRY_POLICY)
 
             producer.publish(
