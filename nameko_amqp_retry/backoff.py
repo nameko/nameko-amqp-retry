@@ -4,7 +4,7 @@ import six
 from kombu import Connection
 from kombu.common import maybe_declare
 from kombu.messaging import Exchange, Queue
-from kombu.pools import producers
+from nameko.amqp import get_producer
 from nameko.constants import AMQP_URI_CONFIG_KEY, DEFAULT_RETRY_POLICY
 from nameko.extensions import SharedExtension
 
@@ -123,13 +123,14 @@ class BackoffPublisher(SharedExtension):
         expiration = backoff_exc.next(message, self.exchange.name)
         queue = self.make_queue(expiration)
 
+        amqp_uri = self.container.config[AMQP_URI_CONFIG_KEY]
+
         # republish to appropriate backoff queue
         conn = Connection(
-            self.container.config[AMQP_URI_CONFIG_KEY],
+            amqp_uri,
             transport_options={'confirm_publish': True}
         )
-
-        with producers[conn].acquire(block=True) as producer:
+        with get_producer(amqp_uri) as producer:
 
             properties = message.properties.copy()
             headers = properties.pop('application_headers')
