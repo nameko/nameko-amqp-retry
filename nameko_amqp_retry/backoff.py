@@ -126,10 +126,7 @@ class BackoffPublisher(SharedExtension):
         amqp_uri = self.container.config[AMQP_URI_CONFIG_KEY]
 
         # republish to appropriate backoff queue
-        conn = Connection(
-            amqp_uri,
-            transport_options={'confirm_publish': True}
-        )
+        conn = Connection(amqp_uri)
         with get_producer(amqp_uri) as producer:
 
             properties = message.properties.copy()
