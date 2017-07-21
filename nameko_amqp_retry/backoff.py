@@ -4,9 +4,9 @@ import six
 from kombu import Connection
 from kombu.common import maybe_declare
 from kombu.messaging import Exchange, Queue
+from kombu.pools import producers
 from nameko.constants import AMQP_URI_CONFIG_KEY, DEFAULT_RETRY_POLICY
 from nameko.extensions import SharedExtension
-from kombu.pools import producers
 
 
 EXPIRY_GRACE_PERIOD = 5000  # ms
