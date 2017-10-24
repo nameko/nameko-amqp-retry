@@ -3,10 +3,18 @@ Release Notes
 
 Semantic versioning is followed.
 
+Version 0.5.0
+-------------
+
+Released Pending
+
+Add Backoff exception to the entrypoints' `expected_exceptions` configuration.
+Requires Nameko >= 2.7.0.
+
 Version 0.4.0
 -------------
 
-Release 2017-06-30
+Released 2017-06-30
 
 Apply 'x-expires' policy to backoff queues so they're automatically removed
 after use.
