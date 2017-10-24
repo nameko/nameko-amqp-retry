@@ -10,7 +10,6 @@ install:
   - pip install tox
 env:
   - TOX_ENV=py27-lib
-  - TOX_ENV=py33-lib
   - TOX_ENV=py34-lib
   - TOX_ENV=py34-examples
 script:
@@ -18,6 +17,7 @@ script:
 deploy:
   provider: pypi
   user: mattbennett
+  server: "https://upload.pypi.org/legacy/"
   password:
     secure: L0AfGnDxlT6nzOR7ShZZVYiwsYi9AvhaPNPA8EcFo3vvHdQcJoXwpYkHGXEGiIE/IiZsaZyfCrA7ZDpBtup5doFVROn6nAu0fb+3vnht56HbZOMk1QUp9ZATq4jsOBWUGru+KAwEIkhjege5KPPPLkgCswvftQVwXXEBU3+VCvIYbspjH1XUgzMN+L2CoeRi85nl++PDl3VE0Rtmdl5K0gMS70+hx1MCgmhuF16YDMLd5LqejQux1GJ62oFO6FQsoXFrPz7CnP09/AFklYD8Too7cC0HLRpufUbjW3D4sPqu7nGkdQNpAmMnlDgLV/8xUkzWQqEy0rdMWV7IcnW5Q/RSXSEkgKIWgT5qmgyzArE9lwlpJsVwKODEjCRgVkgkPjVWcIKh+z6MiOl+8GlIaya7jmQuK0iS47baP5wxx1pQzaeLF6yq5FiO0QPFwoiza+pO/Z3ybll/gKKET0drsvKHo/pXs8W+v9I8nvFp8ah6u3oK3ZSRg7GMCTzjqM2Pq9RZdAEx0x1QGbnoRUDFCs2ZwDrsQlWjLdGSpfY6B7kdz2D+W5Bj39P2ec+bbgFIr55evRG5/9ekP8VN3Cw7jTzpHCx+oWHVsbQK2YWolNCE6blnOqpMa3mJLAMnFmaf0XA9lzWZF+CYSdMdPL1V1QDJOxDvTDsftb7g6wRqDpQ=
   on:

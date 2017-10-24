@@ -4,7 +4,7 @@ import six
 from kombu import Connection
 from kombu.common import maybe_declare
 from kombu.messaging import Exchange, Queue
-from kombu.pools import producers
+from nameko.amqp import get_producer
 from nameko.constants import AMQP_URI_CONFIG_KEY, DEFAULT_RETRY_POLICY
 from nameko.extensions import SharedExtension
 
@@ -13,7 +13,7 @@ EXPIRY_GRACE_PERIOD = 5000  # ms
 
 
 def get_backoff_queue_name(expiration):
-    return "backoff--{}".format(expiration)
+    return "backoff--{}ms".format(expiration)
 
 
 def round_to_nearest(value, interval):
@@ -124,8 +124,8 @@ class BackoffPublisher(SharedExtension):
         queue = self.make_queue(expiration)
 
         # republish to appropriate backoff queue
-        conn = Connection(self.container.config[AMQP_URI_CONFIG_KEY])
-        with producers[conn].acquire(block=True) as producer:
+        amqp_uri = self.container.config[AMQP_URI_CONFIG_KEY]
+        with get_producer(amqp_uri) as producer:
 
             properties = message.properties.copy()
             headers = properties.pop('application_headers')
@@ -135,6 +135,7 @@ class BackoffPublisher(SharedExtension):
 
             # force redeclaration; the publisher will skip declaration if
             # the entity has previously been declared by the same connection
+            conn = Connection(amqp_uri)
             maybe_declare(queue, conn, retry=True, **DEFAULT_RETRY_POLICY)
 
             producer.publish(
@@ -145,6 +146,6 @@ class BackoffPublisher(SharedExtension):
                 expiration=expiration_seconds,
                 retry=True,
                 retry_policy=DEFAULT_RETRY_POLICY,
-                declare=[self.exchange, queue],
+                declare=[queue.exchange, queue],
                 **properties
             )
