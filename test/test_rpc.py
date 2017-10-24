@@ -4,7 +4,7 @@ import pytest
 import six
 from mock import ANY, patch
 from nameko.exceptions import RemoteError
-from nameko.testing.services import entrypoint_waiter
+from nameko.testing.services import entrypoint_waiter, get_extension
 
 from nameko_amqp_retry import Backoff
 from nameko_amqp_retry.rpc import Rpc, rpc
@@ -307,3 +307,55 @@ class TestRpc(object):
         with pytest.raises(RemoteError) as exc_info:
             rpc_proxy.service.method()
         assert exc_info.value.exc_type == "Boom"
+
+
+class TestExpectedExceptions(object):
+
+    class UserException(Exception):
+        pass
+
+    @pytest.fixture
+    def container(self, container_factory):
+
+        class Service(object):
+            name = "service"
+
+            @rpc
+            def nothing_expected(self):
+                raise Backoff()
+
+            @rpc(expected_exceptions=self.UserException)
+            def something_expected(self):
+                raise Backoff()
+
+            @rpc(expected_exceptions=(self.UserException, Backoff))
+            def backoff_expected(self):
+                raise Backoff()
+
+        config = {'AMQP_URI': 'memory://localhost'}
+        container = container_factory(Service, config)
+        return container
+
+    def test_without_user_specified_exceptions(self, container):
+        nothing_expected = get_extension(
+            container, Rpc, method_name="nothing_expected"
+        )
+        assert issubclass(Backoff, nothing_expected.expected_exceptions)
+
+    def test_with_user_specified_exceptions(self, container):
+        something_expected = get_extension(
+            container, Rpc, method_name="something_expected"
+        )
+        assert issubclass(
+            self.UserException, something_expected.expected_exceptions
+        )
+        assert issubclass(Backoff, something_expected.expected_exceptions)
+
+    def test_with_user_specified_exceptions_including_backoff(self, container):
+        backoff_expected = get_extension(
+            container, Rpc, method_name="backoff_expected"
+        )
+        assert issubclass(
+            self.UserException, backoff_expected.expected_exceptions
+        )
+        assert issubclass(Backoff, backoff_expected.expected_exceptions)
