@@ -4,7 +4,8 @@ from nameko.messaging import HeaderEncoder, QueueConsumer
 from nameko.rpc import Rpc as NamekoRpc
 from nameko.rpc import RpcConsumer as NamekoRpcConsumer
 
-from nameko_amqp_retry import Backoff, BackoffPublisher
+from nameko_amqp_retry import (
+    Backoff, BackoffPublisher, expect_backoff_exception)
 from nameko_amqp_retry.constants import (
     CALL_ID_STACK_HEADER_KEY, RPC_METHOD_ID_HEADER_KEY)
 
@@ -31,6 +32,14 @@ class Rpc(NamekoRpc, HeaderEncoder):
     rpc_consumer = RpcConsumer()
     queue_consumer = QueueConsumer()
     backoff_publisher = BackoffPublisher()
+
+    def __init__(self, *args, **kwargs):
+        expected_exceptions = expect_backoff_exception(
+            kwargs.pop('expected_exceptions', ())
+        )
+        super(Rpc, self).__init__(
+            *args, expected_exceptions=expected_exceptions, **kwargs
+        )
 
     def handle_result(self, message, worker_ctx, result, exc_info):
 
