@@ -3,10 +3,10 @@ import traceback
 import pytest
 import six
 from mock import ANY
-from nameko.testing.services import entrypoint_waiter
+from nameko.testing.services import entrypoint_waiter, get_extension
 
 from nameko_amqp_retry import Backoff
-from nameko_amqp_retry.events import event_handler
+from nameko_amqp_retry.events import event_handler, EventHandler
 
 from test import PY3
 
@@ -264,3 +264,60 @@ class TestEvents(object):
             [None] * backoff_count + ["c"]
         )
         assert counter['c'] == backoff_count + 1
+
+
+class TestExpectedExceptions(object):
+
+    class UserException(Exception):
+        pass
+
+    @pytest.fixture
+    def container(self, container_factory):
+
+        class Service(object):
+            name = "service"
+
+            @event_handler('service', 'event')
+            def nothing_expected(self, payload):
+                raise Backoff()
+
+            @event_handler(
+                'service', 'event', expected_exceptions=self.UserException
+            )
+            def something_expected(self):
+                raise Backoff()
+
+            @event_handler(
+                'service', 'event',
+                expected_exceptions=(self.UserException, Backoff)
+            )
+            def backoff_expected(self):
+                raise Backoff()
+
+        config = {'AMQP_URI': 'memory://localhost'}
+        container = container_factory(Service, config)
+        return container
+
+    def test_without_user_specified_exceptions(self, container):
+        nothing_expected = get_extension(
+            container, EventHandler, method_name="nothing_expected"
+        )
+        assert issubclass(Backoff, nothing_expected.expected_exceptions)
+
+    def test_with_user_specified_exceptions(self, container):
+        something_expected = get_extension(
+            container, EventHandler, method_name="something_expected"
+        )
+        assert issubclass(
+            self.UserException, something_expected.expected_exceptions
+        )
+        assert issubclass(Backoff, something_expected.expected_exceptions)
+
+    def test_with_user_specified_exceptions_including_backoff(self, container):
+        backoff_expected = get_extension(
+            container, EventHandler, method_name="backoff_expected"
+        )
+        assert issubclass(
+            self.UserException, backoff_expected.expected_exceptions
+        )
+        assert issubclass(Backoff, backoff_expected.expected_exceptions)

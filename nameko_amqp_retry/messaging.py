@@ -2,13 +2,22 @@ import sys
 
 from nameko.messaging import Consumer as NamekoConsumer
 
-from nameko_amqp_retry import Backoff, BackoffPublisher
+from nameko_amqp_retry import (
+    Backoff, BackoffPublisher, expect_backoff_exception)
 from nameko_amqp_retry.constants import CALL_ID_STACK_HEADER_KEY
 
 
 class Consumer(NamekoConsumer):
 
     backoff_publisher = BackoffPublisher()
+
+    def __init__(self, *args, **kwargs):
+        expected_exceptions = expect_backoff_exception(
+            kwargs.pop('expected_exceptions', ())
+        )
+        super(Consumer, self).__init__(
+            *args, expected_exceptions=expected_exceptions, **kwargs
+        )
 
     def handle_result(self, message, worker_ctx, result=None, exc_info=None):
 

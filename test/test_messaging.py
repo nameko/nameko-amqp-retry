@@ -4,12 +4,10 @@ import pytest
 import six
 from kombu.messaging import Queue
 from mock import ANY
-from nameko.testing.services import entrypoint_waiter
-
+from nameko.testing.services import entrypoint_waiter, get_extension
 from nameko_amqp_retry import Backoff
 from nameko_amqp_retry.backoff import get_backoff_queue_name
-from nameko_amqp_retry.messaging import consume
-
+from nameko_amqp_retry.messaging import consume, Consumer
 from test import PY3
 
 
@@ -250,3 +248,55 @@ class TestMessaging(object):
 
         with pytest.raises(Boom):
             result.get()
+
+
+class TestExpectedExceptions(object):
+
+    class UserException(Exception):
+        pass
+
+    @pytest.fixture
+    def container(self, container_factory, queue):
+
+        class Service(object):
+            name = "service"
+
+            @consume(queue)
+            def nothing_expected(self):
+                raise Backoff()
+
+            @consume(queue, expected_exceptions=self.UserException)
+            def something_expected(self):
+                raise Backoff()
+
+            @consume(queue, expected_exceptions=(self.UserException, Backoff))
+            def backoff_expected(self):
+                raise Backoff()
+
+        config = {'AMQP_URI': 'memory://localhost'}
+        container = container_factory(Service, config)
+        return container
+
+    def test_without_user_specified_exceptions(self, container):
+        nothing_expected = get_extension(
+            container, Consumer, method_name="nothing_expected"
+        )
+        assert issubclass(Backoff, nothing_expected.expected_exceptions)
+
+    def test_with_user_specified_exceptions(self, container):
+        something_expected = get_extension(
+            container, Consumer, method_name="something_expected"
+        )
+        assert issubclass(
+            self.UserException, something_expected.expected_exceptions
+        )
+        assert issubclass(Backoff, something_expected.expected_exceptions)
+
+    def test_with_user_specified_exceptions_including_backoff(self, container):
+        backoff_expected = get_extension(
+            container, Consumer, method_name="backoff_expected"
+        )
+        assert issubclass(
+            self.UserException, backoff_expected.expected_exceptions
+        )
+        assert issubclass(Backoff, backoff_expected.expected_exceptions)

@@ -3,26 +3,33 @@ Release Notes
 
 Semantic versioning is followed.
 
+Version 0.5.0
+-------------
+
+Released Pending
+
+* Add Backoff exception to the entrypoints' `expected_exceptions` configuration. Requires Nameko >= 2.7.0.
+
 Version 0.4.2
 -------------
 
-Release 2017-07-21
+Released 2017-07-21
 
-Uses publish-confirms when republishing to backoff queues.
+* Uses publish-confirms when republishing to backoff queues.
 
 Version 0.4.1
 -------------
 
-Release 2017-07-18
+Released 2017-07-18
 
-Change queue name to differentiate expiring queues from any existing queues.
+* Change queue name to differentiate expiring queues from any existing queues.
 
 Version 0.4.0
 -------------
 
-Release 2017-06-30
+Released 2017-06-30
 
-Apply 'x-expires' policy to backoff queues so they're automatically removed
+* Apply 'x-expires' policy to backoff queues so they're automatically removed
 after use.
 
 Version 0.3.4
@@ -30,29 +37,29 @@ Version 0.3.4
 
 Released 2017-06-01
 
-Include next-retry info in the Backoff error description.
-Prevent negative values being used as expiration times.
+* Include next-retry info in the Backoff error description.
+* Prevent negative values being used as expiration times.
 
 Version 0.3.3
 -------------
 
 Released 2017-04-06
 
-Ensure exchange and queue declaration has retry-policy when re-publishing
+* Ensure exchange and queue declaration has retry-policy when re-publishing
 
 Version 0.3.2
 -------------
 
 Released 2017-03-31
 
-Include retry_policy when re-publishing
+* Include retry_policy when re-publishing
 
 Version 0.3.1
 -------------
 
 Released 2017-02-03
 
-Fix to allow disabling of `random_sigma` by setting it to 0
+* Fix to allow disabling of `random_sigma` by setting it to 0
 
 Version 0.3.0
 -------------
