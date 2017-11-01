@@ -6,7 +6,7 @@ Semantic versioning is followed.
 Version 0.5.0
 -------------
 
-Released Pending
+Released 2017-11-01
 
 * Add Backoff exception to the entrypoints' `expected_exceptions` configuration. Requires Nameko >= 2.7.0.
 
