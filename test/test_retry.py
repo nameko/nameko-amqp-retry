@@ -1,3 +1,4 @@
+from contextlib import contextmanager
 import itertools
 import json
 import time
@@ -8,35 +9,19 @@ from kombu.messaging import Exchange, Queue
 from kombu.pools import connections
 from kombu.serialization import register, unregister
 from mock import ANY, patch
+from nameko.amqp.publish import UndeliverableMessage
 from nameko.constants import AMQP_URI_CONFIG_KEY
 from nameko.extensions import DependencyProvider
 from nameko.testing.services import entrypoint_waiter
+from nameko.testing.utils import get_extension
+from nameko.testing.waiting import wait_for_call
+from nameko.utils.retry import retry
 from requests.exceptions import HTTPError
 
 from nameko_amqp_retry import Backoff, BackoffPublisher
-from nameko_amqp_retry.backoff import (
-    EXPIRY_GRACE_PERIOD, get_backoff_queue_name)
+from nameko_amqp_retry.backoff import get_backoff_queue_name, get_producer
 from nameko_amqp_retry.messaging import consume
 from nameko_amqp_retry.rpc import rpc
-
-
-def retry(fn):
-    """ Barebones retry decorator
-    """
-    def wrapper(*args, **kwargs):
-        exceptions = AssertionError
-        max_retries = 3
-        delay = 1
-
-        counter = itertools.count()
-        while True:
-            try:
-                return fn(*args, **kwargs)
-            except exceptions:
-                if next(counter) == max_retries:
-                    raise
-                time.sleep(delay)
-    return wrapper
 
 
 class QuickBackoff(Backoff):
@@ -185,6 +170,65 @@ class TestQueueExpiry(object):
         # (after exactly one backoff). if the subsequent publishes didn't
         # redeclare the queue, the later messages would be lost when the queue
         # was removed (50ms + fast_expire after the first publish)
+
+
+class TestMandatoryDelivery:
+
+    @pytest.fixture
+    def container(self, container_factory, rabbit_config, queue):
+
+        class Service(object):
+            name = "service"
+
+            @consume(queue)
+            def backoff(self, delay):
+                raise Backoff()
+
+        container = container_factory(Service, rabbit_config)
+        container.start()
+        return container
+
+    def test_failed_delivery(
+        self, container, publish_message, exchange, queue, rabbit_config
+    ):
+        backoff_publisher = get_extension(container, BackoffPublisher)
+        make_queue = backoff_publisher.make_queue
+
+        # patch make_queue so that the return value does not have
+        # a matching binding; this forces an unroutable messsage
+        with patch.object(backoff_publisher, 'make_queue') as patched:
+
+            patched.return_value = make_queue(999999)
+
+            # patch get_producer so we can wait until publish is called
+            # multiple times, demonstrating the retry
+            with patch('nameko_amqp_retry.backoff.get_producer') as patched:
+
+                # create a replacement producer that we can hook into
+                # and make our patched get_producer return that
+                amqp_uri = rabbit_config['AMQP_URI']
+                with get_producer(amqp_uri) as replacement_producer:
+
+                    @contextmanager
+                    def producer_context(*a, **k):
+                        yield replacement_producer
+
+                    patched.side_effect = producer_context
+
+                    # fire entrypoint and wait for retry of the backoff publish
+                    counter = itertools.count()
+                    with wait_for_call(
+                        replacement_producer, 'publish',
+                        callback=lambda *a, **k: next(counter) == 2
+                    ):
+                        publish_message(
+                            exchange, "", routing_key=queue.routing_key
+                        )
+
+                    # when the retry also fails,
+                    # the container is killed so that the request is requeued
+                    with pytest.raises(UndeliverableMessage):
+                        container.wait()
 
 
 class TestMultipleMessages(object):
