@@ -3,6 +3,17 @@ Release Notes
 
 Semantic versioning is followed.
 
+Version 0.6.0
+-------------
+
+Released 2018-06-05
+
+* Backoff messages are published with mandatory delivery to ensure
+  they are delivered. Protects against races between declaration
+  of the backoff queue and publishing, in case they happen on
+  different nodes in a RabbitMQ cluster.
+
+
 Version 0.5.0
 -------------
 
