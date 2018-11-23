@@ -5,7 +5,7 @@ services:
   - docker
 
 before_install:
-  - docker run -d --hostname rabbitmq --name rabbitmq -p 15672:15672 -p 5672:5672 -e RABBITMQ_DEFAULT_USER=guest -e RABBITMQ_DEFAULT_PASS=guest rabbitmq:3.5.4-management
+  - docker run -d --hostname rabbitmq --name rabbitmq -p 15672:15672 -p 5672:5672 -e RABBITMQ_DEFAULT_USER=guest -e RABBITMQ_DEFAULT_PASS=guest rabbitmq:3.7.8-management
 
 install:
   - pip install tox
@@ -18,13 +18,60 @@ matrix:
   include:
     - stage: lib
       python: 2.7
-      env: TOX_ENV=py27-lib
+      env: TOX_ENV=py27-oldest-lib
+    - stage: lib
+      python: 2.7
+      env: TOX_ENV=py27-latest-lib
+    - stage: lib
+      python: 2.7
+      env: TOX_ENV=py27-prerelease-lib
     - stage: lib
       python: 3.4
-      env: TOX_ENV=py34-lib
-    - stage: examples
+      env: TOX_ENV=py34-oldest-lib
+    - stage: lib
       python: 3.4
-      env: TOX_ENV=py34-examples
+      env: TOX_ENV=py34-latest-lib
+    - stage: lib
+      python: 3.4
+      env: TOX_ENV=py34-prerelease-lib
+    - stage: lib
+      python: 3.5
+      env: TOX_ENV=py35-oldest-lib
+    - stage: lib
+      python: 3.5
+      env: TOX_ENV=py35-latest-lib
+    - stage: lib
+      python: 3.5
+      env: TOX_ENV=py35-prerelease-lib
+    - stage: lib
+      python: 3.6
+      env: TOX_ENV=py36-oldest-lib
+    - stage: lib
+      python: 3.6
+      env: TOX_ENV=py36-latest-lib
+    - stage: lib
+      python: 3.6
+      env: TOX_ENV=py36-prerelease-lib
+    - stage: lib
+      python: 3.7
+      dist: xenial
+      sudo: true
+      env: TOX_ENV=py37-oldest-lib
+    - stage: lib
+      python: 3.7
+      dist: xenial
+      sudo: true
+      env: TOX_ENV=py37-latest-lib
+    - stage: lib
+      python: 3.7
+      dist: xenial
+      sudo: true
+      env: TOX_ENV=py37-prerelease-lib
+    - stage: examples
+      python: 3.7
+      dist: xenial
+      sudo: true
+      env: TOX_ENV=py37-examples
     - stage: deploy
       script: skip
       deploy:

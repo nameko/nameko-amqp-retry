@@ -1,9 +1,8 @@
-from contextlib import contextmanager
-import itertools
 import json
 import time
 
 import pytest
+from amqp.exceptions import NotFound
 from kombu import Connection
 from kombu.messaging import Exchange, Queue
 from kombu.pools import connections
@@ -14,14 +13,13 @@ from nameko.constants import AMQP_URI_CONFIG_KEY
 from nameko.extensions import DependencyProvider
 from nameko.testing.services import entrypoint_waiter
 from nameko.testing.utils import get_extension
-from nameko.testing.waiting import wait_for_call
 from nameko.utils.retry import retry
-from requests.exceptions import HTTPError
-
 from nameko_amqp_retry import Backoff, BackoffPublisher
-from nameko_amqp_retry.backoff import get_backoff_queue_name, get_producer
+from nameko_amqp_retry.backoff import get_backoff_queue_name
 from nameko_amqp_retry.messaging import consume
 from nameko_amqp_retry.rpc import rpc
+
+from test import NAMEKO3
 
 
 class QuickBackoff(Backoff):
@@ -52,7 +50,7 @@ class TestPublisher(object):
 
     def test_routing(
         self, container, publish_message, exchange, queue, counter,
-        rabbit_config, rabbit_manager
+        rabbit_config, rabbit_manager, queue_info
     ):
         """ Queues should be dynamically created for each unique delay.
         Messages should be routed to the appropriate queue based on their
@@ -73,12 +71,9 @@ class TestPublisher(object):
         # and only messages with the matching delay are in each one
         @retry
         def check_queue(delay):
-            backoff_queue = rabbit_manager.get_queue(
-                vhost, get_backoff_queue_name(delay)
-            )
-            assert backoff_queue['messages'] == delays.count(delay)
+            backoff_queue = queue_info(get_backoff_queue_name(delay))
+            assert backoff_queue.message_count == delays.count(delay)
 
-        vhost = rabbit_config['vhost']
         for delay in set(delays):
             check_queue(delay)
 
@@ -114,7 +109,7 @@ class TestQueueExpiry(object):
 
     def test_queues_removed(
         self, container, publish_message, exchange, queue, counter,
-        rabbit_config, rabbit_manager, fast_expire
+        rabbit_config, rabbit_manager, fast_expire, queue_info
     ):
         """ Backoff queues should be removed after their messages are
         redelivered.
@@ -136,13 +131,9 @@ class TestQueueExpiry(object):
         time.sleep((max(delays) + fast_expire) / 1000.0)
 
         # verify the queues have been removed
-        vhost = rabbit_config['vhost']
         for delay in set(delays):
-            with pytest.raises(HTTPError) as raised:
-                rabbit_manager.get_queue(
-                    vhost, get_backoff_queue_name(delay)
-                )
-            assert raised.value.response.status_code == 404
+            with pytest.raises(NotFound):
+                queue_info(get_backoff_queue_name(delay))
 
     def test_republishing_redeclares(
         self, container, publish_message, exchange, queue, counter,
@@ -196,39 +187,17 @@ class TestMandatoryDelivery:
 
         # patch make_queue so that the return value does not have
         # a matching binding; this forces an unroutable messsage
-        with patch.object(backoff_publisher, 'make_queue') as patched:
+        with patch.object(
+            backoff_publisher, 'make_queue', new=lambda _: make_queue(999999)
+        ):
+            publish_message(
+                exchange, "", routing_key=queue.routing_key
+            )
 
-            patched.return_value = make_queue(999999)
-
-            # patch get_producer so we can wait until publish is called
-            # multiple times, demonstrating the retry
-            with patch('nameko_amqp_retry.backoff.get_producer') as patched:
-
-                # create a replacement producer that we can hook into
-                # and make our patched get_producer return that
-                amqp_uri = rabbit_config['AMQP_URI']
-                with get_producer(amqp_uri) as replacement_producer:
-
-                    @contextmanager
-                    def producer_context(*a, **k):
-                        yield replacement_producer
-
-                    patched.side_effect = producer_context
-
-                    # fire entrypoint and wait for retry of the backoff publish
-                    counter = itertools.count()
-                    with wait_for_call(
-                        replacement_producer, 'publish',
-                        callback=lambda *a, **k: next(counter) == 2
-                    ):
-                        publish_message(
-                            exchange, "", routing_key=queue.routing_key
-                        )
-
-                    # when the retry also fails,
-                    # the container is killed so that the request is requeued
-                    with pytest.raises(UndeliverableMessage):
-                        container.wait()
+            # when the backoff publisher fails, the error should bubble up to
+            # the container
+            with pytest.raises(UndeliverableMessage):
+                container.wait()
 
 
 class TestMultipleMessages(object):
@@ -357,7 +326,7 @@ class TestCallStack(object):
         with entrypoint_waiter(container, 'method', callback=callback):
             rpc_proxy.service.method("msg")
 
-        assert call_stacks == [
+        expected = [
             [
                 'standalone_rpc_proxy.call.0',
                 'service.method.1'
@@ -381,6 +350,12 @@ class TestCallStack(object):
                 'service.method.4'
             ],
         ]
+
+        if NAMEKO3:  # pragma: no cover
+            for stack in expected:
+                stack[0] = stack[0].replace("proxy", "client").replace("call", "0")
+
+        assert call_stacks == expected
 
     @pytest.mark.usefixtures('predictable_call_ids')
     def test_events_call_stack(self, container, dispatch_event):

@@ -5,10 +5,10 @@ from kombu import Connection
 from kombu.messaging import Exchange, Queue
 from kombu.pools import connections, producers
 from mock import patch
+from nameko.amqp.publish import get_connection
 from nameko.constants import AMQP_URI_CONFIG_KEY
 from nameko.standalone.events import event_dispatcher
 from nameko.standalone.rpc import ClusterRpcProxy
-
 from nameko_amqp_retry import Backoff
 from nameko_amqp_retry.events import event_handler
 from nameko_amqp_retry.messaging import consume
@@ -210,3 +210,13 @@ def wait_for_backoff_expired(entrypoint_tracker):
         if exc_info and exc_info[0] is Backoff.Expired:
             return True
     return cb
+
+
+@pytest.fixture
+def queue_info(amqp_uri):
+    def get_queue_info(queue_name):
+        with get_connection(amqp_uri) as conn:
+            queue = Queue(name=queue_name)
+            queue = queue.bind(conn)
+            return queue.queue_declare(passive=True)
+    return get_queue_info

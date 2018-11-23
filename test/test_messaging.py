@@ -7,8 +7,8 @@ from mock import ANY
 from nameko.testing.services import entrypoint_waiter, get_extension
 from nameko_amqp_retry import Backoff
 from nameko_amqp_retry.backoff import get_backoff_queue_name
-from nameko_amqp_retry.messaging import consume, Consumer
-from test import PY3
+from nameko_amqp_retry.messaging import Consumer, consume
+from test import PY3, PY34
 
 
 class TestMessaging(object):
@@ -159,12 +159,15 @@ class TestMessaging(object):
             stack = "".join(traceback.format_exception(exc_type, exc, tb))
             assert "NotYet: try again later" in stack
             assert "nameko_amqp_retry.backoff.Backoff" in stack
-            assert "nameko_amqp_retry.backoff.Expired" in stack
+            if PY34:
+                assert "nameko_amqp_retry.backoff.Expired" in stack
+            else:
+                assert "nameko_amqp_retry.backoff.Backoff.Expired" in stack
 
     def test_multiple_queues_with_same_exchange_and_routing_key(
         self, container_factory, entrypoint_tracker, rabbit_manager, exchange,
         wait_for_result, publish_message, counter, rabbit_config,
-        backoff_count, fast_backoff
+        backoff_count, fast_backoff, queue_info
     ):
         """ Message consumption backoff works when there are muliple queues
         receiving the published message
@@ -205,17 +208,14 @@ class TestMessaging(object):
                 publish_message(exchange, "msg", routing_key="message")
 
         # ensure all messages are processed
-        vhost = rabbit_config['vhost']
         for delay in fast_backoff:
-            backoff_queue = rabbit_manager.get_queue(
-                vhost, get_backoff_queue_name(delay)
-            )
-            assert backoff_queue['messages'] == 0
+            backoff_queue = queue_info(get_backoff_queue_name(delay))
+            assert backoff_queue.message_count == 0
 
-        service_queue_one = rabbit_manager.get_queue(vhost, queue_one.name)
-        service_queue_two = rabbit_manager.get_queue(vhost, queue_two.name)
-        assert service_queue_one['messages'] == 0
-        assert service_queue_two['messages'] == 0
+        service_queue_one = queue_info(queue_one.name)
+        service_queue_two = queue_info(queue_two.name)
+        assert service_queue_one.message_count == 0
+        assert service_queue_two.message_count == 0
 
         assert result_one.get() == "one"
         assert result_two.get() == "two"

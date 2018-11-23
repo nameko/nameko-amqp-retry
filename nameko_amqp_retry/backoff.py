@@ -4,11 +4,9 @@ import six
 from kombu import Connection
 from kombu.common import maybe_declare
 from kombu.messaging import Exchange, Queue
-from nameko.amqp.publish import get_producer, UndeliverableMessage
+from nameko.amqp.publish import Publisher
 from nameko.constants import AMQP_URI_CONFIG_KEY, DEFAULT_RETRY_POLICY
 from nameko.extensions import SharedExtension
-from nameko.utils.retry import retry
-from six.moves import queue as PyQueue
 
 EXPIRY_GRACE_PERIOD = 5000  # ms
 
@@ -124,44 +122,33 @@ class BackoffPublisher(SharedExtension):
         expiration = backoff_exc.next(message, self.exchange.name)
         queue = self.make_queue(expiration)
 
-        # republish to appropriate backoff queue
+        properties = message.properties.copy()
+        headers = properties.pop('application_headers', {})
+
+        headers['backoff'] = expiration
+        expiration_seconds = float(expiration) / 1000
+
         amqp_uri = self.container.config[AMQP_URI_CONFIG_KEY]
-        with get_producer(amqp_uri) as producer:
 
-            properties = message.properties.copy()
-            headers = properties.pop('application_headers')
+        # force redeclaration; the publisher will skip declaration if
+        # the entity has previously been declared by the same connection
+        # (see https://github.com/celery/kombu/pull/884)
+        conn = Connection(amqp_uri)
+        maybe_declare(
+            queue, conn.channel(), retry=True, **DEFAULT_RETRY_POLICY
+        )
 
-            headers['backoff'] = expiration
-            expiration_seconds = float(expiration) / 1000
-
-            # force redeclaration; the publisher will skip declaration if
-            # the entity has previously been declared by the same connection
-            # (see https://github.com/celery/kombu/pull/884)
-            conn = Connection(amqp_uri)
-            maybe_declare(queue, conn, retry=True, **DEFAULT_RETRY_POLICY)
-
-            @retry(for_exceptions=UndeliverableMessage)
-            def publish():
-
-                producer.publish(
-                    message.body,
-                    headers=headers,
-                    exchange=self.exchange,
-                    routing_key=target_queue,
-                    expiration=expiration_seconds,
-                    mandatory=True,
-                    retry=True,
-                    retry_policy=DEFAULT_RETRY_POLICY,
-                    declare=[queue.exchange, queue],
-                    **properties
-                )
-
-                try:
-                    returned_messages = producer.channel.returned_messages
-                    returned = returned_messages.get_nowait()
-                except PyQueue.Empty:
-                    pass
-                else:
-                    raise UndeliverableMessage(returned)
-
-            publish()
+        # republish to appropriate backoff queue
+        publisher = Publisher(amqp_uri)
+        publisher.publish(
+            message.body,
+            headers=headers,
+            exchange=self.exchange,
+            routing_key=target_queue,
+            expiration=expiration_seconds,
+            mandatory=True,
+            retry=True,
+            retry_policy=DEFAULT_RETRY_POLICY,
+            declare=[queue.exchange, queue],
+            **properties
+        )

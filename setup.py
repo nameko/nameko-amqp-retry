@@ -10,7 +10,7 @@ setup(
     packages=find_packages(exclude=['test', 'test.*']),
     install_requires=[
         "nameko>=2.7.0",
-        "kombu>=3.0.25,<4"
+        "kombu"
     ],
     extras_require={
         'dev': [

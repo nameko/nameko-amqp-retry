@@ -1,13 +1,11 @@
 import sys
 
-from nameko.messaging import HeaderEncoder, QueueConsumer
 from nameko.rpc import Rpc as NamekoRpc
 from nameko.rpc import RpcConsumer as NamekoRpcConsumer
-
-from nameko_amqp_retry import (
-    Backoff, BackoffPublisher, expect_backoff_exception)
+from nameko_amqp_retry import Backoff, BackoffPublisher, expect_backoff_exception
 from nameko_amqp_retry.constants import (
-    CALL_ID_STACK_HEADER_KEY, RPC_METHOD_ID_HEADER_KEY)
+    CALL_ID_STACK_HEADER_KEY, RPC_METHOD_ID_HEADER_KEY
+)
 
 
 class RpcConsumer(NamekoRpcConsumer):
@@ -27,10 +25,9 @@ class RpcConsumer(NamekoRpcConsumer):
             self.handle_result(message, None, exc_info)
 
 
-class Rpc(NamekoRpc, HeaderEncoder):
+class Rpc(NamekoRpc):
 
     rpc_consumer = RpcConsumer()
-    queue_consumer = QueueConsumer()
     backoff_publisher = BackoffPublisher()
 
     def __init__(self, *args, **kwargs):
@@ -65,7 +62,13 @@ class Rpc(NamekoRpc, HeaderEncoder):
                     self.backoff_publisher.republish(
                         exc, message, target_queue
                     )
-                    self.queue_consumer.ack_message(message)
+                    try:
+                        # pylint: disable=no-member
+                        self.rpc_consumer.consumer.ack_message(message)
+                    except AttributeError:
+                        # nameko 2.x backwards compatibilty
+                        # pylint: disable=no-member
+                        self.rpc_consumer.queue_consumer.ack_message(message)
                     return result, exc_info
 
                 except Backoff.Expired:
