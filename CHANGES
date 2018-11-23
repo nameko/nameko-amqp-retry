@@ -3,6 +3,15 @@ Release Notes
 
 Semantic versioning is followed.
 
+
+Version 0.7.0
+-------------
+
+Released 2018-11-23
+
+* Support for Nameko 2.11.0 and above (fixes #23)
+
+
 Version 0.6.0
 -------------
 
