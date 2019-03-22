@@ -3,6 +3,7 @@ import random
 import six
 from kombu import Connection
 from kombu.common import maybe_declare
+from kombu.exceptions import NotBoundError
 from kombu.messaging import Exchange, Queue
 from nameko.amqp.publish import Publisher
 from nameko.constants import AMQP_URI_CONFIG_KEY, DEFAULT_RETRY_POLICY
@@ -133,10 +134,14 @@ class BackoffPublisher(SharedExtension):
         # force redeclaration; the publisher will skip declaration if
         # the entity has previously been declared by the same connection
         # (see https://github.com/celery/kombu/pull/884)
+        # kombu >= 4.3.0 will raise NotBoundError here
         conn = Connection(amqp_uri)
-        maybe_declare(
-            queue, conn.channel(), retry=True, **DEFAULT_RETRY_POLICY
-        )
+        try:
+            maybe_declare(
+                queue, conn.channel(), retry=True, **DEFAULT_RETRY_POLICY
+            )
+        except NotBoundError:
+            pass
 
         # republish to appropriate backoff queue
         publisher = Publisher(amqp_uri)
