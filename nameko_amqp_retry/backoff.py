@@ -132,7 +132,7 @@ class BackoffPublisher(SharedExtension):
         amqp_uri = self.container.config[AMQP_URI_CONFIG_KEY]
 
         # force redeclaration;
-        # In kombu versions prior to 4.3.0 the publisher will skip declaration if
+        # In kombu versions prior to 4.3.0, the publisher will skip declaration if
         # the entity has previously been declared by the same connection
         # (see https://github.com/celery/kombu/pull/884)
         conn = Connection(amqp_uri)

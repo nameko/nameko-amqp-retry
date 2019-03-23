@@ -4,6 +4,13 @@ Release Notes
 Semantic versioning is followed.
 
 
+Version 0.7.1
+-------------
+Released 2019-03-25
+
+* Compatibility fix for kombu > 4.3.0 
+
+
 Version 0.7.0
 -------------
 
