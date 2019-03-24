@@ -12,6 +12,9 @@ from nameko.extensions import SharedExtension
 EXPIRY_GRACE_PERIOD = 5000  # ms
 
 
+KOMBU_PRE_4_3 = parse_version(kombu_version) < parse_version('4.3.0')
+
+
 def get_backoff_queue_name(expiration):
     return "backoff--{}ms".format(expiration)
 
@@ -133,10 +136,10 @@ class BackoffPublisher(SharedExtension):
 
         # force redeclaration;
         # In kombu versions prior to 4.3.0, the publisher will skip declaration if
-        # the entity has previously been declared by the same connection
+        # the entity has previously been declared by the same connection.
         # (see https://github.com/celery/kombu/pull/884)
         conn = Connection(amqp_uri)
-        if parse_version(kombu_version) < parse_version('4.3.0'):
+        if KOMBU_PRE_4_3:  # pragma: no cover
             maybe_declare(
                 queue, conn.channel(), retry=True, **DEFAULT_RETRY_POLICY
             )
